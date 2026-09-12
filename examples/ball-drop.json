@@ -1,0 +1,233 @@
+{
+  "title": "Ball drop · pipeline test",
+  "summary": "Authored test scene: a coral sphere drops onto a circular plinth. This is a renderer fixture, not an AI remake.",
+  "limitations": [
+    "Synthetic pipeline test; does not measure reference reconstruction fidelity."
+  ],
+  "materials": [
+    {
+      "id": "coral",
+      "color": "#f16f45",
+      "roughness": 0.45,
+      "metallic": 0.0,
+      "emission": 0.0
+    },
+    {
+      "id": "chalk",
+      "color": "#c7c9c2",
+      "roughness": 0.45,
+      "metallic": 0.0,
+      "emission": 0.0
+    },
+    {
+      "id": "floor",
+      "color": "#323a3c",
+      "roughness": 0.45,
+      "metallic": 0.0,
+      "emission": 0.0
+    }
+  ],
+  "shots": [
+    {
+      "name": "The drop",
+      "start": 0.0,
+      "end": 2.0,
+      "description": "A ball drops and rebounds on a studio plinth.",
+      "background": "#181b20",
+      "camera": {
+        "location": [
+          5.0,
+          -8.0,
+          4.0
+        ],
+        "target": [
+          0.0,
+          0.0,
+          1.1
+        ],
+        "lens": 48.0,
+        "orthographic": false,
+        "ortho_scale": 8.0,
+        "keys": [],
+        "target_keys": []
+      },
+      "lights": [
+        {
+          "kind": "AREA",
+          "location": [
+            2.0,
+            -4.0,
+            7.0
+          ],
+          "target": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "color": "#ffffff",
+          "energy": 1200.0,
+          "size": 5.0
+        },
+        {
+          "kind": "AREA",
+          "location": [
+            -4.0,
+            1.0,
+            4.0
+          ],
+          "target": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "color": "#a9d9ed",
+          "energy": 900.0,
+          "size": 5.0
+        }
+      ],
+      "objects": [
+        {
+          "id": "ball",
+          "kind": "sphere",
+          "material": "coral",
+          "parent": "",
+          "location": [
+            0.0,
+            0.0,
+            2.6
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            0.52,
+            0.52,
+            0.52
+          ],
+          "vertices": [],
+          "faces": [],
+          "points": [],
+          "thickness": 0.04,
+          "text": "",
+          "bevel": 0.0,
+          "subdivision": 0,
+          "smooth": true,
+          "keys": [
+            {
+              "t": 0.0,
+              "property": "location",
+              "value": [
+                0.0,
+                0.0,
+                2.6
+              ],
+              "interpolation": "BEZIER"
+            },
+            {
+              "t": 0.8,
+              "property": "location",
+              "value": [
+                0.0,
+                0.0,
+                0.9
+              ],
+              "interpolation": "BEZIER"
+            },
+            {
+              "t": 1.15,
+              "property": "location",
+              "value": [
+                0.0,
+                0.0,
+                1.5
+              ],
+              "interpolation": "BEZIER"
+            },
+            {
+              "t": 1.65,
+              "property": "location",
+              "value": [
+                0.0,
+                0.0,
+                0.9
+              ],
+              "interpolation": "BEZIER"
+            },
+            {
+              "t": 2.0,
+              "property": "location",
+              "value": [
+                0.0,
+                0.0,
+                0.9
+              ],
+              "interpolation": "BEZIER"
+            }
+          ]
+        },
+        {
+          "id": "plinth",
+          "kind": "cylinder",
+          "material": "chalk",
+          "parent": "",
+          "location": [
+            0.0,
+            0.0,
+            0.2
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.5,
+            1.5,
+            0.2
+          ],
+          "vertices": [],
+          "faces": [],
+          "points": [],
+          "thickness": 0.04,
+          "text": "",
+          "bevel": 0.06,
+          "subdivision": 0,
+          "smooth": true,
+          "keys": []
+        },
+        {
+          "id": "ground",
+          "kind": "plane",
+          "material": "floor",
+          "parent": "",
+          "location": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            200.0,
+            200.0,
+            200.0
+          ],
+          "vertices": [],
+          "faces": [],
+          "points": [],
+          "thickness": 0.04,
+          "text": "",
+          "bevel": 0.0,
+          "subdivision": 0,
+          "smooth": true,
+          "keys": []
+        }
+      ]
+    }
+  ]
+}
