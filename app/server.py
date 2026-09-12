@@ -21,7 +21,7 @@ class Revision(BaseModel):
 
 
 def create_app(data_root=None, *, start_jobs=True):
-    store = Store(data_root or os.environ.get('BLENDREMAKE_DATA', ROOT / 'data'))
+    store = Store(data_root or os.environ.get('BLENDREMAKE_DATA', ROOT / 'data' / 'projects'))
     pipeline = Pipeline(store)
     auth_cache = {'time': 0, 'connected': False}
 
@@ -84,7 +84,7 @@ def create_app(data_root=None, *, start_jobs=True):
             blender = bool(render.blender_binary())
         except ValueError:
             blender = False
-        return dict(app='blendremake', version='0.1.0', blender=blender, codex=auth_cache['connected'],
+        return dict(app='blendremake', version='0.2.0', blender=blender, codex=auth_cache['connected'],
                     ffmpeg=bool(shutil.which('ffmpeg') and shutil.which('ffprobe')), model=ai.MODEL)
 
     @app.get('/api/jobs')
@@ -100,7 +100,7 @@ def create_app(data_root=None, *, start_jobs=True):
         url: Annotated[str, Form(max_length=2000)] = '',
         brief: Annotated[str, Form(max_length=4000)] = '',
         start: Annotated[float, Form(ge=0, le=86400, allow_inf_nan=False)] = 0,
-        duration: Annotated[float, Form(ge=.25, le=30, allow_inf_nan=False)] = 8,
+        duration: Annotated[float, Form(ge=.25, le=60, allow_inf_nan=False)] = 8,
         quality: Annotated[Literal['draft', 'standard'], Form()] = 'draft',
         audio: Annotated[bool, Form()] = True,
         review: Annotated[bool, Form()] = True,

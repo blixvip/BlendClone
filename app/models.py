@@ -13,7 +13,7 @@ class Model(BaseModel):
 
 
 class Key(Model):
-    t: Annotated[float, Field(ge=0, le=30, allow_inf_nan=False)]
+    t: Annotated[float, Field(ge=0, le=60, allow_inf_nan=False)]
     property: Literal['location', 'rotation', 'scale']
     value: Vec3
     interpolation: Literal['LINEAR', 'BEZIER', 'CONSTANT'] = 'BEZIER'
@@ -25,20 +25,41 @@ class Material(Model):
     roughness: Annotated[float, Field(ge=0, le=1)] = .45
     metallic: Annotated[float, Field(ge=0, le=1)] = 0
     emission: Annotated[float, Field(ge=0, le=10)] = 0
+    subsurface: Annotated[float, Field(ge=0, le=1)] = 0
+    coat: Annotated[float, Field(ge=0, le=1)] = 0
+    transmission: Annotated[float, Field(ge=0, le=1)] = 0
+    pattern: Literal['solid', 'noise', 'skin', 'cells', 'wood', 'wound'] = 'solid'
+    detail_color: Color = '#ffffff'
+    texture_scale: Annotated[float, Field(gt=0, le=1000)] = 8
+    bump: Annotated[float, Field(ge=0, le=1)] = 0
+    stretch: Vec3 = (1,1,1)
+    unlit: bool = False
+
+
+class ShapeKey(Model):
+    name: Annotated[str, Field(pattern=r'^[a-zA-Z0-9_-]{1,60}$')]
+    center: Vec3 = (0,0,0)
+    radius: Vec3 = (1,1,1)
+    displacement: Vec3 = (0,0,1)
+    keys: Annotated[list[Key], Field(max_length=120)]
 
 
 class Object(Model):
     id: Annotated[str, Field(pattern=r'^[a-zA-Z0-9_-]{1,60}$')]
-    kind: Literal['cube', 'sphere', 'cylinder', 'cone', 'torus', 'plane', 'mesh', 'curve', 'empty', 'text']
+    kind: Literal['cube', 'sphere', 'cylinder', 'cone', 'torus', 'plane', 'mesh', 'curve', 'empty', 'text', 'asset']
+    asset: Literal['', 'skin_section', 'skin_surface', 'finger', 'hand', 'tweezers', 'splinter'] = ''
+    seed: Annotated[int, Field(ge=0, le=100000)] = 7
     material: str = ''
     parent: str = ''
     location: Vec3 = (0, 0, 0)
     rotation: Vec3 = (0, 0, 0)
     scale: Vec3 = (1, 1, 1)
-    vertices: Annotated[list[Vec3], Field(max_length=12000)] = []
-    faces: Annotated[list[list[Annotated[int, Field(ge=0)]]], Field(max_length=12000)] = []
+    vertices: Annotated[list[Vec3], Field(max_length=150000)] = []
+    faces: Annotated[list[list[Annotated[int, Field(ge=0)]]], Field(max_length=150000)] = []
     points: Annotated[list[Vec3], Field(max_length=2000)] = []
     thickness: Annotated[float, Field(ge=.001, le=10)] = .04
+    radii: Annotated[list[Annotated[float, Field(ge=0, le=20)]], Field(max_length=2000)] = []
+    shapes: Annotated[list[ShapeKey], Field(max_length=12)] = []
     text: Annotated[str, Field(max_length=500)] = ''
     bevel: Annotated[float, Field(ge=0, le=2)] = 0
     subdivision: Annotated[int, Field(ge=0, le=2)] = 0
@@ -55,6 +76,12 @@ class Object(Model):
                     raise ValueError('mesh face references an invalid vertex')
         if self.kind == 'curve' and len(self.points) < 2:
             raise ValueError('curve requires at least two points')
+        if self.radii and (self.kind != 'curve' or len(self.radii) != len(self.points)):
+            raise ValueError('curve radii must match points')
+        if self.shapes and self.kind not in ('mesh','asset'):
+            raise ValueError('shape deformation requires an explicit mesh')
+        if (self.kind == 'asset') != bool(self.asset):
+            raise ValueError('asset kind requires a named asset recipe')
         return self
 
 
@@ -64,6 +91,7 @@ class Camera(Model):
     lens: Annotated[float, Field(ge=10, le=250)] = 50
     orthographic: bool = False
     ortho_scale: Annotated[float, Field(ge=.1, le=100)] = 8
+    aperture: Annotated[float, Field(ge=0, le=64)] = 0
     keys: Annotated[list[Key], Field(max_length=120)] = []
     target_keys: Annotated[list[Key], Field(max_length=120)] = []
 
@@ -79,13 +107,13 @@ class Light(Model):
 
 class Shot(Model):
     name: Annotated[str, Field(min_length=1, max_length=100)]
-    start: Annotated[float, Field(ge=0, le=30, allow_inf_nan=False)]
-    end: Annotated[float, Field(gt=0, le=30, allow_inf_nan=False)]
+    start: Annotated[float, Field(ge=0, le=60, allow_inf_nan=False)]
+    end: Annotated[float, Field(gt=0, le=60, allow_inf_nan=False)]
     description: Annotated[str, Field(max_length=2000)]
     background: Color = '#181b20'
     camera: Camera
     lights: Annotated[list[Light], Field(min_length=1, max_length=12)]
-    objects: Annotated[list[Object], Field(min_length=1, max_length=240)]
+    objects: Annotated[list[Object], Field(min_length=1, max_length=600)]
 
     @model_validator(mode='after')
     def relationships(self):
@@ -105,6 +133,7 @@ class Shot(Model):
 
 
 class Plan(Model):
+    view_transform: Literal['AgX', 'Standard'] = 'AgX'
     title: Annotated[str, Field(min_length=1, max_length=100)]
     summary: Annotated[str, Field(max_length=4000)]
     limitations: Annotated[list[Annotated[str, Field(max_length=1000)]], Field(max_length=30)]
@@ -116,8 +145,10 @@ class Plan(Model):
         ids = {m.id for m in self.materials}
         if len(ids) != len(self.materials):
             raise ValueError('material IDs must be unique')
-        if sum(len(s.objects) for s in self.shots) > 600:
-            raise ValueError('project exceeds 600 objects')
+        if sum(len(s.objects) for s in self.shots) > 3000:
+            raise ValueError('project exceeds 3000 objects')
+        if sum(len(o.vertices) for s in self.shots for o in s.objects) > 1000000:
+            raise ValueError('project exceeds one million explicit vertices')
         for shot in self.shots:
             for obj in shot.objects:
                 if obj.material and obj.material not in ids:
@@ -130,7 +161,7 @@ def validate_timing(plan: Plan, duration: float):
     for shot in plan.shots:
         if abs(shot.start - cursor) > .002 or shot.end <= shot.start:
             raise ValueError('shots must cover the clip consecutively without gaps or overlaps')
-        for keys in [shot.camera.keys, shot.camera.target_keys, *(o.keys for o in shot.objects)]:
+        for keys in [shot.camera.keys, shot.camera.target_keys, *(o.keys for o in shot.objects), *(shape.keys for o in shot.objects for shape in o.shapes)]:
             for key in keys:
                 if key.t > shot.end - shot.start + .002:
                     raise ValueError('keyframe extends beyond its shot')

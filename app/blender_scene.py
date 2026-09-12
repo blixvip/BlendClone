@@ -93,9 +93,11 @@ def make_object(spec, collection, materials):
         data.use_fill_caps = True
         spline = data.splines.new('BEZIER')
         spline.bezier_points.add(len(spec['points'])-1)
-        for point, co in zip(spline.bezier_points, spec['points']):
+        for i, (point, co) in enumerate(zip(spline.bezier_points, spec['points'])):
             point.co = co
             point.handle_left_type = point.handle_right_type = 'AUTO'
+            if spec.get('radii'):
+                point.radius = spec['radii'][i]
         obj = bpy.data.objects.new(spec['id'], data)
     elif kind == 'text':
         data = bpy.data.curves.new(spec['id'], 'FONT')
@@ -125,6 +127,86 @@ def make_object(spec, collection, materials):
     return obj
 
 
+def material_nodes(mat, spec):
+    tree = mat.node_tree
+    node = tree.nodes.get('Principled BSDF')
+    if spec.get('unlit'):
+        emission=tree.nodes.new('ShaderNodeEmission')
+        emission.inputs['Color'].default_value=rgba(spec['color'])
+        emission.inputs['Strength'].default_value=max(.01,spec.get('emission',1))
+        tree.links.new(emission.outputs[0],tree.nodes.get('Material Output').inputs['Surface'])
+        return
+    node.inputs['Base Color'].default_value = rgba(spec['color'])
+    node.inputs['Roughness'].default_value = spec['roughness']
+    node.inputs['Metallic'].default_value = spec['metallic']
+    node.inputs['Emission Color'].default_value = rgba(spec['color'])
+    node.inputs['Emission Strength'].default_value = spec['emission']
+    node.inputs['Subsurface Weight'].default_value = spec.get('subsurface', 0)
+    node.inputs['Subsurface Radius'].default_value = (1,.35,.18)
+    node.inputs['Coat Weight'].default_value = spec.get('coat',0)
+    node.inputs['Coat Roughness'].default_value = .24
+    node.inputs['Transmission Weight'].default_value = spec.get('transmission',0)
+    if spec.get('pattern','solid') == 'solid':
+        return
+    coord=tree.nodes.new('ShaderNodeTexCoord')
+    scale=tree.nodes.new('ShaderNodeVectorMath');scale.operation='MULTIPLY'
+    scale.inputs[1].default_value=spec.get('stretch',(1,1,1))
+    tree.links.new(coord.outputs['Object'],scale.inputs[0])
+    tex=tree.nodes.new('ShaderNodeTexNoise')
+    tex.inputs['Scale'].default_value=spec.get('texture_scale',8)
+    tex.inputs['Detail'].default_value=3.5
+    tex.inputs['Roughness'].default_value=.7
+    tree.links.new(scale.outputs[0],tex.inputs['Vector'])
+    ramp=tree.nodes.new('ShaderNodeValToRGB')
+    ramp.color_ramp.elements[0].position=.2
+    ramp.color_ramp.elements[0].color=rgba(spec['color'])
+    ramp.color_ramp.elements[1].position=.8
+    ramp.color_ramp.elements[1].color=rgba(spec.get('detail_color',spec['color']))
+    tree.links.new(tex.outputs['Fac'],ramp.inputs[0]);tree.links.new(ramp.outputs[0],node.inputs['Base Color'])
+    source=tex.outputs['Fac']
+    if spec['pattern'] == 'wound':
+        distance=tree.nodes.new('ShaderNodeVectorMath');distance.operation='LENGTH'
+        tree.links.new(coord.outputs['Object'],distance.inputs[0])
+        fade=tree.nodes.new('ShaderNodeMapRange');fade.clamp=True
+        fade.inputs['From Min'].default_value=.1;fade.inputs['From Max'].default_value=1.1
+        tree.links.new(distance.outputs['Value'],fade.inputs['Value'])
+        mix=tree.nodes.new('ShaderNodeMixRGB');mix.inputs[1].default_value=rgba('#C8544B')
+        tree.links.new(fade.outputs[0],mix.inputs[0]);tree.links.new(ramp.outputs[0],mix.inputs[2])
+        tree.links.new(mix.outputs[0],node.inputs['Base Color'])
+    if spec['pattern'] in ('skin','cells','wound'):
+        pores=tree.nodes.new('ShaderNodeTexVoronoi');pores.feature='DISTANCE_TO_EDGE'
+        pores.inputs['Scale'].default_value=spec.get('texture_scale',8)*3
+        tree.links.new(scale.outputs[0],pores.inputs['Vector'])
+        source=pores.outputs['Distance']
+    bump=tree.nodes.new('ShaderNodeBump')
+    bump.inputs['Strength'].default_value=spec.get('bump',0)
+    bump.inputs['Distance'].default_value=.025 if spec['pattern']!='wood' else .08
+    tree.links.new(source,bump.inputs['Height']);tree.links.new(bump.outputs[0],node.inputs['Normal'])
+
+
+def shape_animation(obj, shapes, start, fps):
+    if not shapes:
+        return
+    obj.shape_key_add(name='Basis')
+    for spec in shapes:
+        key=obj.shape_key_add(name=spec['name'],from_mix=False)
+        for vertex in key.data:
+            co=vertex.co.copy()
+            distance=sum(((co[i]-spec['center'][i])/max(.001,spec['radius'][i]))**2 for i in range(3))
+            influence=math.exp(-distance*2)
+            vertex.co=tuple(co[i]+spec['displacement'][i]*influence for i in range(3))
+        key.slider_min=-3;key.slider_max=3
+        for point in spec['keys']:
+            key.value=point['value'][0]
+            key.keyframe_insert('value',frame=1+round((start+point['t'])*fps))
+        for curve in curves(obj.data.shape_keys):
+            if curve.data_path == key.path_from_id('value'):
+                for point in curve.keyframe_points:
+                    local_time=(point.co.x-1)/fps-start
+                    closest=min(spec['keys'],key=lambda item:abs(item['t']-local_time))
+                    point.interpolation=closest['interpolation']
+
+
 def build(config):
     folder = Path(config['folder']).resolve()
     plan = json.loads((folder / config.get('plan', 'plan.json')).read_text(encoding='utf-8'))
@@ -135,7 +217,7 @@ def build(config):
     scene.render.fps = fps
     scene.frame_start = 1
     scene.frame_end = max(1, round(config['duration'] * fps))
-    scene.render.engine = 'CYCLES'
+    scene.render.engine = config.get('engine','CYCLES')
     scene.cycles.samples = config.get('samples', 16)
     scene.cycles.use_denoising = True
     scene.cycles.device = 'CPU'
@@ -160,23 +242,18 @@ def build(config):
     scene.render.resolution_percentage = 100
     scene.render.image_settings.file_format = 'PNG'
     scene.render.image_settings.color_mode = 'RGB'
-    scene.view_settings.view_transform = 'AgX'
+    scene.view_settings.view_transform = plan.get('view_transform','AgX')
     world = bpy.data.worlds.new('Shot environments')
     world.use_nodes = True
     scene.world = world
     background = world.node_tree.nodes.get('Background')
-    background.inputs['Strength'].default_value = .35
+    background.inputs['Strength'].default_value = 1
     materials = {}
     for spec in plan['materials']:
         mat = bpy.data.materials.new(spec['id'])
         mat.diffuse_color = rgba(spec['color'])
         mat.use_nodes = True
-        node = mat.node_tree.nodes.get('Principled BSDF')
-        node.inputs['Base Color'].default_value = rgba(spec['color'])
-        node.inputs['Roughness'].default_value = spec['roughness']
-        node.inputs['Metallic'].default_value = spec['metallic']
-        node.inputs['Emission Color'].default_value = rgba(spec['color'])
-        node.inputs['Emission Strength'].default_value = spec['emission']
+        material_nodes(mat,spec)
         materials[spec['id']] = mat
     for index, shot in enumerate(plan['shots']):
         collection = bpy.data.collections.new(f'{index+1:02d} · {shot["name"]}')
@@ -187,6 +264,7 @@ def build(config):
             if spec['parent']:
                 obj.parent = objects[spec['parent']]
             animate(obj, spec['keys'], shot['start'], fps)
+            shape_animation(obj,spec.get('shapes',[]),shot['start'],fps)
             visible_during(obj, shot['start'], shot['end'], fps)
         camera_spec = shot['camera']
         camera_data = bpy.data.cameras.new(f'Camera {index+1}')
@@ -201,6 +279,10 @@ def build(config):
         target = bpy.data.objects.new(f'Camera target {index+1}', None)
         collection.objects.link(target)
         target.location = camera_spec['target']
+        if camera_spec.get('aperture'):
+            camera_data.dof.use_dof=True
+            camera_data.dof.focus_object=target
+            camera_data.dof.aperture_fstop=camera_spec['aperture']
         constraint = camera.constraints.new('TRACK_TO')
         constraint.target, constraint.track_axis, constraint.up_axis = target, 'TRACK_NEGATIVE_Z', 'UP_Y'
         animate(camera, camera_spec['keys'], shot['start'], fps)
@@ -234,6 +316,7 @@ def build(config):
     notes.write(plan['summary'] + '\n\nKnown approximations:\n' + '\n'.join(plan['limitations']))
     bpy.ops.wm.save_as_mainfile(filepath=str(folder / 'remake.blend'))
     inventory = dict(objects=len(scene.objects), meshes=sum(o.type == 'MESH' for o in scene.objects), cameras=sum(o.type == 'CAMERA' for o in scene.objects), frames=scene.frame_end, fps=fps, shots=len(plan['shots']), animated_objects=sum(bool(o.animation_data) for o in scene.objects), device=scene.cycles.device)
+    inventory.update(engine=scene.render.engine, shape_keys=sum(len(o.data.shape_keys.key_blocks)-1 for o in scene.objects if o.type=='MESH' and o.data.shape_keys), vertices=sum(len(o.data.vertices) for o in scene.objects if o.type=='MESH'))
     (folder / 'inventory.json').write_text(json.dumps(inventory, indent=2), encoding='utf-8')
     preview = folder / 'previews'
     preview.mkdir(exist_ok=True)

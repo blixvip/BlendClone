@@ -23,7 +23,7 @@ flowchart LR
     I --> J[Compare and export]
 ```
 
-The correction loop runs at most once. A Blender build failure allows one repair attempt. Model analysis has a 15-minute step timeout; Blender previews have ten minutes and animation one hour. Rendering time depends strongly on geometry, resolution, frames, samples, and hardware. Progress shows the current stage, not a predicted completion time.
+The correction loop runs at most once. A Blender build failure allows one repair attempt. Model analysis has a 15-minute step timeout; Blender previews have ten minutes and animation one hour. Rendering time depends strongly on geometry, resolution, frames, samples, and hardware. Animation progress reports saved frames. It does not predict completion time.
 
 ## Scene representation
 
@@ -43,12 +43,16 @@ The UI polls job state while a project runs. Reloading the browser does not canc
 
 An unrestricted Python generator can express more Blender operations, but it also executes model output on the user's computer. A stable compiler and validated scene contract give us a reproducible first pipeline and an explicit list of supported features. Improving quality means expanding those capabilities alongside visual tests.
 
-## Next quality milestones
+## Implemented in 0.2
 
-1. **One real reference benchmark.** Select a representative 5–10 second shot; compare composition, silhouette, lighting, and action at the same timestamps. Save reference-specific failure observations without invented aggregate accuracy scores.
-2. **Asset-assisted reconstruction.** Allow explicitly supplied GLB/FBX assets, inspect available rig/bone names, and map observed subjects to editable assets. Preserve licensing and provenance. This is not implemented in 0.1.
-3. **Character motion and deformation.** Add constrained skeleton schemas, imported animation clips, inverse kinematics targets, and shape-key controls. Evaluate against real character movement.
-4. **Richer surfaces and anatomy.** Add trusted texture ingestion and anatomy assets, then evaluate cutaways, material boundaries, and shape changes.
+Trusted asset recipes expand compact anatomical specifications into native meshes and curves before Blender compilation. `plan.json` stores the editable recipes; `expanded_plan.json` stores the complete portable geometry. Native shape keys animate tissue swelling. Procedural shaders provide skin pores, wood grain, subsurface color and glossy surfaces. Asset scenes use Eevee. Clips may span up to 60 seconds. The full user-supplied splinter reference is an authored visual benchmark; see [observations](SPLINTER-BENCHMARK.md).
+
+## Remaining quality milestones
+
+1. **Measure automatic reconstruction on real references.** The curated splinter benchmark now exists. Compare fresh Astra-generated plans against it and additional unrelated footage. Keep authored asset quality separate from model reconstruction performance.
+2. **Asset-assisted reconstruction.** Allow explicitly supplied GLB/FBX assets, inspect available rig/bone names, and map observed subjects to editable assets. Preserve licensing and provenance. This is not implemented in 0.2.
+3. **Character motion and deformation.** Add constrained skeleton schemas, imported animation clips, inverse kinematics targets, and rig controls. Native shape keys are implemented; evaluate against real character movement.
+4. **Richer surfaces and anatomy.** Improve the implemented anatomy assets and add trusted image texture ingestion. Evaluate tissue layers, material boundaries, and shape changes.
 5. **Longer videos.** Reconstruct shots independently with shared assets, shot-level cache and retry, and explicit continuity constraints. Keep the output playable and editable as one Blender project.
 
-These are future milestones, not features claimed by the current implementation.
+The remaining milestones are not features claimed by the current implementation.

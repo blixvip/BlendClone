@@ -8,7 +8,7 @@ root = Path(__file__).resolve().parents[1]
 source = root / 'outputs' / 'renderer-check' / 'reference.mp4'
 if not source.exists():
     raise SystemExit('Run scripts/renderer_check.py first.')
-with httpx.Client(base_url='http://127.0.0.1:4327', timeout=60) as client:
+with httpx.Client(base_url='http://127.0.0.1:4328', timeout=60) as client:
     with source.open('rb') as video:
         response = client.post('/api/jobs', headers={'X-BlendRemake': '1'},
             data=dict(duration='2', start='0', quality='draft', audio='false', review='true',
@@ -35,4 +35,4 @@ with httpx.Client(base_url='http://127.0.0.1:4327', timeout=60) as client:
         response.raise_for_status()
         assert len(response.content) > 100
     print('Live Astra reconstruction and all downloads passed.', flush=True)
-    print('Inspect visually: http://127.0.0.1:4327/#'+job['id'], flush=True)
+    print('Inspect visually: http://127.0.0.1:4328/#'+job['id'], flush=True)

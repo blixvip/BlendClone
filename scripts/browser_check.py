@@ -16,7 +16,7 @@ def main():
         for name, width, height in [('desktop', 1440, 1000), ('mobile', 390, 844), ('small-mobile', 320, 800), ('tablet', 768, 1000), ('small-desktop', 1024, 900)]:
             page = browser.new_page(viewport={'width': width, 'height': height})
             page.on('pageerror', lambda error: errors.append(str(error)))
-            page.goto('http://127.0.0.1:4327/', wait_until='networkidle')
+            page.goto('http://127.0.0.1:4328/', wait_until='networkidle')
             page.get_by_role('heading', name='Rebuild a video in Blender.').wait_for()
             assert page.locator('body').evaluate('(el) => el.scrollWidth <= innerWidth')
             assert page.get_by_label('Reference video URL').is_visible()
@@ -48,7 +48,7 @@ def main():
             else:
                 route.fulfill(body=payload, content_type='video/mp4', headers={'Accept-Ranges': 'bytes'})
         page.route('**/api/jobs/ffffffffffff/files/**', serve_video)
-        page.goto('http://127.0.0.1:4327/#ffffffffffff', wait_until='networkidle')
+        page.goto('http://127.0.0.1:4328/#ffffffffffff', wait_until='networkidle')
         page.get_by_role('button', name='Cancel job').wait_for()
         page.screenshot(path=str(OUT / 'loading.png'), full_page=True)
         job.update(status='failed', message='Test failure: reference could not be read.')

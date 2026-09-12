@@ -3,6 +3,7 @@ import json
 import math
 import socket
 import sys
+from pathlib import Path
 from urllib.parse import urlsplit
 import cv2
 from PIL import Image, ImageDraw
@@ -27,11 +28,19 @@ def validate_url(url):
         raise ValueError('Private network links are not supported.')
 
 
+def download_arguments(url, dest):
+    return [sys.executable, '-m', 'yt_dlp', '--ignore-config', '--no-playlist', '--no-progress',
+         '--max-filesize', str(MAX_BYTES), '--socket-timeout', '20', '--retries', '1',
+         '-f', 'bestvideo[height<=1920][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1920]+bestaudio/best',
+         '--merge-output-format', 'mp4', '--remux-video', 'mp4', '-o', str(Path(dest).with_suffix('.%(ext)s')), '--', url]
+
+
 def download(url, dest, cancel):
     validate_url(url)
-    run([sys.executable, '-m', 'yt_dlp', '--ignore-config', '--no-playlist', '--no-progress',
-         '--max-filesize', str(MAX_BYTES), '--socket-timeout', '20', '--retries', '1',
-         '-f', 'best[height<=1080]/best', '-o', str(dest), '--', url], timeout=240, cancel=cancel, log=dest.parent / 'download.log')
+    run(download_arguments(url, dest), timeout=240, cancel=cancel, log=dest.parent / 'download.log')
+    merged=dest.with_suffix('.mp4')
+    if merged != dest and merged.is_file():
+        merged.replace(dest)
     if not dest.exists():
         raise ValueError('No video downloaded. Upload the file instead.')
     if dest.stat().st_size > MAX_BYTES:

@@ -22,3 +22,9 @@ def test_cancellation_stops_only_the_owned_child():
 def test_process_timeout_is_bounded():
     with pytest.raises(TimeoutError):
         run([sys.executable, '-c', 'import time; time.sleep(30)'], timeout=.1)
+
+
+def test_running_child_reports_progress_without_losing_output():
+    ticks = []
+    output = run([sys.executable, '-c', 'import time; time.sleep(.8); print("finished")'], on_tick=lambda: ticks.append(True))
+    assert ticks and output.strip() == b'finished'

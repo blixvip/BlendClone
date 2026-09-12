@@ -8,7 +8,7 @@ class Cancelled(Exception):
     pass
 
 
-def run(args, *, cwd=None, timeout=120, cancel=None, input=None, env=None, log=None, combined=False):
+def run(args, *, cwd=None, timeout=120, cancel=None, input=None, env=None, log=None, combined=False, on_tick=None):
     proc = subprocess.Popen([str(a) for a in args], cwd=cwd, env=env,
         stdin=subprocess.PIPE if input is not None else subprocess.DEVNULL,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -25,6 +25,8 @@ def run(args, *, cwd=None, timeout=120, cancel=None, input=None, env=None, log=N
                 break
             except subprocess.TimeoutExpired:
                 input = None
+                if on_tick:
+                    on_tick()
         if log:
             log.write_bytes(stdout + b'\n' + stderr)
         if proc.returncode:

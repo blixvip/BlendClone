@@ -20,6 +20,18 @@ Visual inspection of the actual comparison found the ball, plinth, overall compo
 
 Screenshots and rendered acceptance artifacts are local under `outputs/` and excluded from Git. Live AI jobs live under `data/` and are also excluded.
 
+## Complex supplied reference: splinter Short
+
+The user supplied Zack D. Films' `yGw0nhlUtkQ`. Its real 1080×1920, 30.363667-second video and audio were downloaded and inspected. The revised app download helper was separately exercised against that URL; split video/audio merging succeeded.
+
+The reference-specific authored plan contains seven shots covering 30.375 seconds after 24 fps normalization. Native Blender inspection confirmed 468 objects, 122 meshes, seven cameras, 264,335 mesh vertices, four shape keys, and a 729-frame timeline. Direct inspection verified independent shape-key bases, increasing surface swelling, upward extraction, and camera switching. The scene uses Eevee.
+
+All 23 current tests passed, including split-stream imports, full Short duration, mesh construction, deformation, material bounds, and subprocess progress. Browser verification again passed at five widths, with actual desktop/mobile screenshots inspected.
+
+The normal app retry pipeline rendered all 729 frames. The remake is 406×720; the synchronized comparison is 812×720. Both are 30.375 seconds with source audio. All four HTTP downloads matched their files on disk. The 8.3 MB ZIP rebuilt independently in `outputs/export-check-44807d64`, and its `.blend` reopened successfully. The real comparison was inspected in desktop and mobile screenshots. The local completed project is `cc2d3dc22850` on port 4328.
+
+The benchmark was manually authored and visually calibrated by the agent using reusable procedural assets. It was not an unattended Astra generation. See [shot details and observed differences](SPLINTER-BENCHMARK.md).
+
 ## Fidelity boundary
 
-The synthetic fixture verifies editing and rendering. It does not establish reconstruction fidelity on Zack D. Films or other creator footage. A representative user-provided reference remains necessary for that evaluation.
+The synthetic fixture verifies automatic planning, editing, and rendering for a simple scene. The complex reference demonstrates anatomical scene construction and deformation, with visible differences in modeling, shading, framing, and motion. Neither establishes automatic creator-level fidelity. Further quality gains require better assets and repeated visual calibration against real footage.

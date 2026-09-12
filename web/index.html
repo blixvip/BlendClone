@@ -15,7 +15,7 @@
     <div class="library-heading"><h2>Your projects</h2><span id="project-count">0</span></div>
     <label class="sr-only" for="search">Search projects</label><input id="search" class="search" placeholder="Search projects…" type="search">
     <div id="library" class="library"><p class="muted">Loading projects…</p></div>
-    <div class="sidebar-footer"><span class="local-dot"></span> Local workspace <span>v0.1</span></div>
+    <div class="sidebar-footer"><span class="local-dot"></span> Local workspace <span>v0.2</span></div>
   </aside>
   <main>
     <header class="topbar"><div><span class="muted">Workspace</span><span class="separator">/</span><span id="breadcrumb">New remake</span></div><div class="engine"><span id="engine-dot" class="status-dot"></span><span id="engine-label">Checking Blender…</span></div></header>
@@ -37,8 +37,8 @@
           </div>
           <div class="settings">
             <div class="section-heading"><h2>The remake</h2><span>02 / SETUP</span></div>
-            <p class="settings-intro">Start with one short shot. Refine it before rebuilding a longer sequence.</p>
-            <div class="time-fields"><div><label for="start">Start at <span>seconds</span></label><input id="start" name="start" type="number" min="0" max="86400" step="0.1" value="0" required></div><div><label for="duration">Length <span>seconds</span></label><input id="duration" name="duration" type="number" min="0.25" max="30" step="0.01" value="8" required></div></div>
+            <p class="settings-intro">Rebuild up to 60 seconds. Longer sequences take more time to render.</p>
+            <div class="time-fields"><div><label for="start">Start at <span>seconds</span></label><input id="start" name="start" type="number" min="0" max="86400" step="0.1" value="0" required></div><div><label for="duration">Length <span>seconds</span></label><input id="duration" name="duration" type="number" min="0.25" max="60" step="0.01" value="8" required></div></div>
             <label for="quality">Render quality</label><select id="quality" name="quality"><option value="draft">Draft · 432p / faster iteration</option><option value="standard">Standard · 720p / more detail</option></select>
             <label class="check-row"><input id="review" name="review" type="checkbox" checked><span>Compare and refine<small>One Astra review of rendered frames</small></span></label>
             <label class="check-row"><input id="audio" name="audio" type="checkbox" checked><span>Keep reference audio<small>Include source sound in the video export</small></span></label>
@@ -47,7 +47,7 @@
             <p class="submit-note">Uses your connected ChatGPT account.<br>Selected reference frames are sent for analysis.</p>
           </div>
         </form>
-        <div class="expectation"><span class="asterisk">✳</span><p><strong>A reconstruction, with room to refine.</strong> Best suited to objects, diagrams, and camera moves. Complex characters and anatomy are approximate. Every result stays editable.</p></div>
+        <div class="expectation"><span class="asterisk">✳</span><p><strong>A reconstruction, with room to refine.</strong> Includes editable anatomical assets and swelling animation. Complex characters and anatomy still need visual refinement. Every result stays editable.</p></div>
       </section>
       <section id="project-view" hidden>
         <div class="project-title"><div><div class="eyebrow">BLENDER RECONSTRUCTION</div><h1 id="job-title">Your remake</h1></div><span id="job-status" class="badge">Queued</span></div>

@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import time
 from pathlib import Path
 from .models import validate_timing
 from .process import run
@@ -27,12 +28,16 @@ def dimensions(meta, quality):
     return max(2, round(meta['width']*scale/2)*2), max(2, round(meta['height']*scale/2)*2)
 
 
-def render(folder, plan, meta, quality, cancel, *, mode='preview', times=None):
+def render(folder, plan, meta, quality, cancel, *, mode='preview', times=None, engine=None, on_progress=None):
     validate_timing(plan, meta['duration'])
     (folder / 'plan.json').write_text(plan.model_dump_json(indent=2), encoding='utf-8')
+    from .anatomy import expand_assets
+    expanded=expand_assets(plan)
+    (folder / 'expanded_plan.json').write_text(expanded.model_dump_json(),encoding='utf-8')
     width, height = dimensions(meta, quality)
     config = dict(folder=str(folder), width=width, height=height, duration=meta['duration'],
-        fps=24, samples=32 if quality == 'standard' else 12, mode=mode, times=times or [])
+        fps=24, samples=32 if quality == 'standard' else 12, mode=mode, times=times or [],
+        plan='expanded_plan.json',engine=engine or ('BLENDER_EEVEE' if any(o.kind=='asset' for s in plan.shots for o in s.objects) else 'CYCLES'))
     config_path = folder / f'{mode}.config.json'
     config_path.write_text(json.dumps(config), encoding='utf-8')
     if mode == 'animation':
@@ -43,9 +48,14 @@ def render(folder, plan, meta, quality, cancel, *, mode='preview', times=None):
             raise ValueError('Invalid render output directory.')
         for old_frame in frames.glob('frame-*.png'):
             old_frame.unlink()
+    last_tick = [0.0]
+    def report():
+        if on_progress and mode == 'animation' and time.monotonic()-last_tick[0] >= 3:
+            last_tick[0] = time.monotonic()
+            on_progress(sum(1 for _ in (folder/'frames').glob('frame-*.png')), max(1, round(meta['duration']*24)))
     run([blender_binary(), '--background', '--factory-startup', '--disable-autoexec', '--python-exit-code', '1',
          '--python', ROOT / 'app' / 'blender_scene.py', '--', config_path], cwd=folder,
-        timeout=3600 if mode == 'animation' else 600, cancel=cancel, log=folder / f'blender-{mode}.log')
+        timeout=3600 if mode == 'animation' else 600, cancel=cancel, log=folder / f'blender-{mode}.log', on_tick=report)
     if not (folder / 'remake.blend').is_file():
         raise ValueError('Blender did not save an editable project.')
     if mode == 'preview':

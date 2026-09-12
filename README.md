@@ -4,15 +4,17 @@ Turn a reference video into an **editable Blender reconstruction**. Import a pub
 
 This is a separate local Windows app and repository. It does not import, modify, or require MotionClone.
 
-## What the first version does
+## What it does
 
 - Imports YouTube, Vimeo, and X links through yt-dlp, or local MP4/MOV/WebM files.
-- Selects a 0.25–30 second section, starting at any valid source timestamp; defaults to 8 seconds.
+- Selects a 0.25–60 second section, starting at any valid source timestamp; defaults to 8 seconds.
 - Samples timestamped frames, including extra samples around strong visual changes.
 - Uses `gpt-6-astra` through the official Codex CLI and your ChatGPT login to describe geometry, materials, cameras, lighting, shot boundaries, and animation.
 - Compiles validated scene data into native Blender objects. No model-authored Python executes.
 - Optionally compares source/rendered frames at matching timestamps and performs one correction pass.
-- Renders 24 fps with Cycles; draft has a 432-pixel longest edge, standard 720. Cycles GPU is selected when available, with CPU fallback.
+- Includes editable procedural hands, fingers, skin surfaces and cutaways, follicles, vessels, nerves, fat cells, splinters, and tweezers.
+- Supports swelling through native shape keys, procedural skin/wood textures, subsurface materials, and depth of field.
+- Renders 24 fps with Eevee for asset scenes and Cycles otherwise; draft has a 432-pixel longest edge, standard 720. Cycles GPU is selected when available, with CPU fallback.
 - Saves projects and job status locally; supports cancellation, retry, and natural-language revisions.
 - Plays the original and remake together, with shared seeking, speed, and audio controls.
 - Exports native `.blend`, rendered MP4, side-by-side comparison, and a project ZIP with the scene JSON and standalone Blender compiler.
@@ -21,9 +23,9 @@ This is a separate local Windows app and repository. It does not import, modify,
 
 This is an experimental reconstruction app, not an original-project recovery tool. Astra infers unseen geometry, lighting, and motion from sampled images. A successful render does not demonstrate visual similarity.
 
-Version 0.1 supports primitives, custom meshes, tube curves, text, materials, bevel/subdivision modifiers, object parenting, transform keyframes, camera targets, lights, and shot cuts. Parent joints allow simple articulated movement. It **does not yet support** imported character assets, skinned rigs, facial animation, shape-key deformation, physics simulation, image textures, or asset search. Complex anatomy and character scenes will be approximate. These are consequential limits for Zack D. Films-style videos.
+Version 0.2 supports primitives, custom meshes, tapered tube curves, text, procedural anatomical assets, textured materials, bevel/subdivision modifiers, object parenting, transform keyframes, shape keys, camera targets, depth of field, lights, and shot cuts. It **does not yet support** imported character assets, skinned rigs, facial animation, physics simulation, image textures, or asset search. Complex anatomy and characters remain approximate.
 
-Start with one 5–10 second object/camera shot and compare the result. Improving recognizable 3D assets and deformable characters is the next major quality step. Do not advertise unattended creator-level fidelity based on the synthetic test.
+The supplied Zack D. Films splinter Short is the first complex benchmark: a full 30.36-second, seven-shot reconstruction. It was authored and iteratively calibrated against the actual reference. It demonstrates editable complex scene construction, not automatic creator-level fidelity. The hand, tissue appearance, exact motion, captions, and flip transition still differ. See [the benchmark](docs/SPLINTER-BENCHMARK.md).
 
 ## Run
 
@@ -33,14 +35,14 @@ Install Python 3.12, Blender 5.1+, FFmpeg/ffprobe, and the official Codex CLI. R
 .\start.ps1
 ```
 
-The launcher creates its own environment when needed and starts the app at **http://127.0.0.1:4327**. It opens the browser and leaves the server running hidden. It never closes or restarts Warp or any unrelated application.
+The launcher creates its own environment when needed and starts the app at **http://127.0.0.1:4328**. It opens the browser and leaves the server running hidden. It never closes or restarts Warp or any unrelated application.
 
 Manual setup:
 
 ```powershell
 py -3.12 -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.lock.txt
-.venv\Scripts\python.exe -m uvicorn app.server:app --host 127.0.0.1 --port 4327
+.venv\Scripts\python.exe -m uvicorn app.server:app --host 127.0.0.1 --port 4328
 ```
 
 Optional environment variables:
@@ -49,7 +51,7 @@ Optional environment variables:
 | --- | --- | --- |
 | `BLENDER_PATH` | Detect installed Blender | Full path to Blender executable |
 | `BLENDREMAKE_MODEL` | `gpt-6-astra` | Model available through your Codex account |
-| `BLENDREMAKE_DATA` | `./data` | Project storage directory |
+| `BLENDREMAKE_DATA` | `./data/projects` | Project storage directory |
 
 ## Privacy and execution
 
@@ -81,6 +83,8 @@ This submits a real reconstruction and review through the connected ChatGPT acco
 
 Run `.venv\Scripts\python.exe scripts\export_check.py PROJECT_ID` for a completed local project to rebuild its ZIP in a separate directory, reopen the `.blend`, and capture the actual comparison.
 
+For the complex reference benchmark, run `.venv\Scripts\python.exe scripts\splinter_reference.py` for representative keyframes, or add `--animate` for the full sequence. It downloads the specified public reference if absent. Run the authoring script when its project is idle; afterward use Retry in the app to render the saved plan through the normal pipeline.
+
 ## Repository
 
 | Path | Purpose |
@@ -88,6 +92,7 @@ Run `.venv\Scripts\python.exe scripts\export_check.py PROJECT_ID` for a complete
 | `app/models.py` | Validated scene contract and timing rules |
 | `app/ai.py` | Astra analysis, correction prompts, Codex bridge |
 | `app/blender_scene.py` | Deterministic JSON-to-Blender compiler |
+| `app/anatomy.py`, `app/geometry.py` | Trusted editable asset recipes and mesh builders |
 | `app/media.py` | Link imports, video normalization, frame sampling |
 | `app/render.py` | Blender execution, video and comparison encoding |
 | `app/pipeline.py` | Persistent job orchestration, retry, export packaging |

@@ -87,7 +87,8 @@ class Pipeline:
                     previews = render.render(folder, plan, meta, job['quality'], cancel, times=review_times)
             progress('Rendering the complete animation', 70, title=plan.title, summary=plan.summary, limitations=plan.limitations,
                 shots=[dict(name=s.name, start=s.start, end=s.end, description=s.description, objects=len(s.objects)) for s in plan.shots])
-            render.render(folder, plan, meta, job['quality'], cancel, mode='animation')
+            render.render(folder, plan, meta, job['quality'], cancel, mode='animation',
+                on_progress=lambda done,total: progress(f'Rendering frame {done} of {total}', 70+round(23*done/total)))
             progress('Preparing video and Blender downloads', 94)
             render.encode(folder, meta['duration'], job.get('audio', True) and meta['audio'], cancel)
             self.package(folder, plan)
@@ -108,11 +109,11 @@ class Pipeline:
     @staticmethod
     def package(folder, plan):
         readme = folder / 'PROJECT.md'
-        readme.write_text(f'# {plan.title}\n\nOpen remake.blend in Blender 5.1+. Objects, cameras, materials, shot markers, and animation are editable.\n\n{plan.summary}\n\n## Known approximations\n\n' + '\n'.join('- '+item for item in plan.limitations) + '\n\nThe source reference is excluded from this export. plan.json is the editable reconstruction specification. rebuild.py compiles it again: blender --background --python rebuild.py -- animation.config.json\n', encoding='utf-8')
+        readme.write_text(f'# {plan.title}\n\nOpen remake.blend in Blender 5.1+. Objects, cameras, materials, shot markers, and animation are editable.\n\n{plan.summary}\n\n## Known approximations\n\n' + '\n'.join('- '+item for item in plan.limitations) + '\n\nThe source reference is excluded from this export. plan.json contains compact asset recipes for regeneration inside BlendRemake. expanded_plan.json contains the complete portable geometry and is the input to rebuild.py. Edit the expanded plan when rebuilding without the app: blender --background --factory-startup --disable-autoexec --python rebuild.py -- animation.config.json\n', encoding='utf-8')
         config = json.loads((folder / 'animation.config.json').read_text(encoding='utf-8'))
         config['folder'] = '.'
         with zipfile.ZipFile(folder / 'project.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
-            for name in ('remake.blend', 'plan.json', 'PROJECT.md', 'inventory.json'):
+            for name in ('remake.blend', 'plan.json', 'expanded_plan.json', 'PROJECT.md', 'inventory.json'):
                 archive.write(folder / name, name)
             archive.write(Path(__file__).with_name('blender_scene.py'), 'rebuild.py')
             archive.writestr('animation.config.json', json.dumps(config, indent=2))
