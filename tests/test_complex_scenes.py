@@ -40,6 +40,14 @@ def test_cells_are_one_editable_mesh():
     Object(id='cells',kind='mesh',vertices=vertices,faces=faces)
 
 
+def test_cell_faces_point_outward_for_subsurface_shading():
+    import numpy as np
+    vertices,faces=ellipsoid_cloud([((0,0,0),(1,1,1))],sides=12,rings=8)
+    face=faces[4*12]
+    a,b,c=[np.array(vertices[i]) for i in face[:3]]
+    assert float(np.dot(np.cross(b-a,c-a),(a+b+c)/3))>0
+
+
 def test_material_and_curve_radius_parameters_are_bounded():
     mat = Material(id='skin',color='#c88471',subsurface=.3,coat=.4,pattern='skin',bump=.18)
     assert mat.subsurface == .3
@@ -47,3 +55,18 @@ def test_material_and_curve_radius_parameters_are_bounded():
         Material(id='skin',color='#c88471',subsurface=5)
     with pytest.raises(ValueError, match='radii'):
         Object(id='hair',kind='curve',points=[(0,0,0),(0,0,1)],radii=[1])
+
+
+def test_fractional_source_rate_survives_reference_preparation(tmp_path):
+    import threading
+    from app.process import run
+    from app.media import prepare
+    import cv2
+    source=tmp_path/'source.mp4'
+    run(['ffmpeg','-y','-v','error','-f','lavfi','-i','color=c=red:s=160x90:r=30000/1001:d=1.001','-c:v','libx264',source])
+    meta=prepare(source,tmp_path,0,1.001,threading.Event())
+    cap=cv2.VideoCapture(str(tmp_path/'reference.mp4'))
+    try:assert int(cap.get(cv2.CAP_PROP_FRAME_COUNT))==30
+    finally:cap.release()
+    assert abs(meta['fps']-30000/1001)<1e-8
+    assert abs(meta['duration']-1.001)<.001

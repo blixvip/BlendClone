@@ -61,7 +61,7 @@ def ellipsoid_cloud(instances, sides=12, rings=8):
         for j in range(rings):
             for i in range(sides):
                 a=offset+j*sides+i; b=offset+j*sides+(i+1)%sides
-                faces.append([a,b,b+sides,a+sides])
+                faces.append([a,a+sides,b+sides,b])
     return vertices, faces
 
 

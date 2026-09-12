@@ -3,6 +3,7 @@ import json
 import math
 import socket
 import sys
+from fractions import Fraction
 from pathlib import Path
 from urllib.parse import urlsplit
 import cv2
@@ -56,8 +57,10 @@ def probe(path):
         width, height = int(video['width']), int(video['height'])
         if not math.isfinite(duration) or duration <= 0 or min(width, height) < 2 or max(width, height) > 8192:
             raise ValueError()
-        return dict(duration=duration, width=width, height=height, audio=any(s['codec_type'] == 'audio' for s in data['streams']))
-    except (RuntimeError, KeyError, ValueError, StopIteration) as error:
+        rate=float(Fraction(video.get('avg_frame_rate') or '24'))
+        if not math.isfinite(rate) or not 1 <= rate <= 240:raise ValueError()
+        return dict(duration=duration, width=width, height=height, fps=rate, audio=any(s['codec_type'] == 'audio' for s in data['streams']))
+    except (RuntimeError, KeyError, ValueError, ZeroDivisionError, StopIteration) as error:
         raise ValueError('Could not read this video. Upload a valid MP4, MOV, or WebM.') from error
 
 
@@ -69,9 +72,10 @@ def prepare(source, folder, start, duration, cancel):
     if duration < .25:
         raise ValueError('Select at least a quarter second of video.')
     target = folder / 'reference.mp4'
+    fps=info['fps']
     run(['ffmpeg', '-y', '-v', 'error', '-protocol_whitelist', 'file,pipe', '-format_whitelist', FORMATS,
          '-ss', str(start), '-i', source, '-t', str(duration), '-map', '0:v:0', '-map', '0:a:0?',
-         '-vf', "scale='min(1080,iw)':'min(1080,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2,setsar=1,fps=24",
+         '-vf', f"scale='min(1080,iw)':'min(1080,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2,setsar=1,fps={fps}",
          '-c:v', 'libx264', '-preset', 'fast', '-crf', '19', '-c:a', 'aac', '-movflags', '+faststart', target], timeout=180, cancel=cancel)
     return probe(target)
 

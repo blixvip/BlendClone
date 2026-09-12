@@ -34,6 +34,7 @@ class Material(Model):
     bump: Annotated[float, Field(ge=0, le=1)] = 0
     stretch: Vec3 = (1,1,1)
     unlit: bool = False
+    camera_only: bool = False
 
 
 class ShapeKey(Model):

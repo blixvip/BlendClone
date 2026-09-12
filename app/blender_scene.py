@@ -134,7 +134,15 @@ def material_nodes(mat, spec):
         emission=tree.nodes.new('ShaderNodeEmission')
         emission.inputs['Color'].default_value=rgba(spec['color'])
         emission.inputs['Strength'].default_value=max(.01,spec.get('emission',1))
-        tree.links.new(emission.outputs[0],tree.nodes.get('Material Output').inputs['Surface'])
+        output=emission.outputs[0]
+        if spec.get('camera_only'):
+            path=tree.nodes.new('ShaderNodeLightPath')
+            transparent=tree.nodes.new('ShaderNodeBsdfTransparent')
+            mix=tree.nodes.new('ShaderNodeMixShader')
+            tree.links.new(path.outputs['Is Camera Ray'],mix.inputs[0])
+            tree.links.new(transparent.outputs[0],mix.inputs[1]);tree.links.new(output,mix.inputs[2])
+            output=mix.outputs[0]
+        tree.links.new(output,tree.nodes.get('Material Output').inputs['Surface'])
         return
     node.inputs['Base Color'].default_value = rgba(spec['color'])
     node.inputs['Roughness'].default_value = spec['roughness']
@@ -213,8 +221,9 @@ def build(config):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
     scene.name = plan['title']
-    fps = config['fps']
-    scene.render.fps = fps
+    fps = config['fps']/config.get('fps_base',1)
+    scene.render.fps = config['fps']
+    scene.render.fps_base = config.get('fps_base',1)
     scene.frame_start = 1
     scene.frame_end = max(1, round(config['duration'] * fps))
     scene.render.engine = config.get('engine','CYCLES')

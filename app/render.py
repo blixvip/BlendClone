@@ -35,8 +35,9 @@ def render(folder, plan, meta, quality, cancel, *, mode='preview', times=None, e
     expanded=expand_assets(plan)
     (folder / 'expanded_plan.json').write_text(expanded.model_dump_json(),encoding='utf-8')
     width, height = dimensions(meta, quality)
+    fps=meta.get('fps',24)
     config = dict(folder=str(folder), width=width, height=height, duration=meta['duration'],
-        fps=24, samples=32 if quality == 'standard' else 12, mode=mode, times=times or [],
+        fps=round(fps), fps_base=round(fps)/fps, samples=32 if quality == 'standard' else 12, mode=mode, times=times or [],
         plan='expanded_plan.json',engine=engine or ('BLENDER_EEVEE' if any(o.kind=='asset' for s in plan.shots for o in s.objects) else 'CYCLES'))
     config_path = folder / f'{mode}.config.json'
     config_path.write_text(json.dumps(config), encoding='utf-8')
@@ -52,7 +53,7 @@ def render(folder, plan, meta, quality, cancel, *, mode='preview', times=None, e
     def report():
         if on_progress and mode == 'animation' and time.monotonic()-last_tick[0] >= 3:
             last_tick[0] = time.monotonic()
-            on_progress(sum(1 for _ in (folder/'frames').glob('frame-*.png')), max(1, round(meta['duration']*24)))
+            on_progress(sum(1 for _ in (folder/'frames').glob('frame-*.png')), max(1, round(meta['duration']*fps)))
     run([blender_binary(), '--background', '--factory-startup', '--disable-autoexec', '--python-exit-code', '1',
          '--python', ROOT / 'app' / 'blender_scene.py', '--', config_path], cwd=folder,
         timeout=3600 if mode == 'animation' else 600, cancel=cancel, log=folder / f'blender-{mode}.log', on_tick=report)
@@ -63,14 +64,16 @@ def render(folder, plan, meta, quality, cancel, *, mode='preview', times=None, e
         if not all(p.exists() for p in paths):
             raise ValueError('Blender did not finish the preview frames.')
         return paths
-    expected = max(1, round(meta['duration']*24))
+    expected = max(1, round(meta['duration']*fps))
     if not all((folder / 'frames' / f'frame-{i:04d}.png').is_file() for i in range(1, expected+1)):
         raise ValueError('Blender did not finish every animation frame.')
     return []
 
 
 def encode(folder, duration, audio, cancel):
-    args = ['ffmpeg', '-y', '-v', 'error', '-framerate', '24', '-i', folder / 'frames' / 'frame-%04d.png']
+    config=json.loads((folder/'animation.config.json').read_text(encoding='utf-8'))
+    fps=config['fps']/config.get('fps_base',1)
+    args = ['ffmpeg', '-y', '-v', 'error', '-framerate', str(fps), '-i', folder / 'frames' / 'frame-%04d.png']
     if audio:
         args += ['-i', folder / 'reference.mp4', '-map', '0:v:0', '-map', '1:a:0?']
     args += ['-t', str(duration), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '18', '-c:a', 'aac', '-movflags', '+faststart', folder / 'remake.mp4']

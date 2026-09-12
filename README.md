@@ -14,7 +14,7 @@ This is a separate local Windows app and repository. It does not import, modify,
 - Optionally compares source/rendered frames at matching timestamps and performs one correction pass.
 - Includes editable procedural hands, fingers, skin surfaces and cutaways, follicles, vessels, nerves, fat cells, splinters, and tweezers.
 - Supports swelling through native shape keys, procedural skin/wood textures, subsurface materials, and depth of field.
-- Renders 24 fps with Eevee for asset scenes and Cycles otherwise; draft has a 432-pixel longest edge, standard 720. Cycles GPU is selected when available, with CPU fallback.
+- Preserves the source frame rate, including 29.97 fps, with Eevee for asset scenes and Cycles otherwise; draft has a 432-pixel longest edge, standard 720. Cycles GPU is selected when available, with CPU fallback. Older saved references remain at their previously normalized rate.
 - Saves projects and job status locally; supports cancellation, retry, and natural-language revisions.
 - Plays the original and remake together, with shared seeking, speed, and audio controls.
 - Exports native `.blend`, rendered MP4, side-by-side comparison, and a project ZIP with the scene JSON and standalone Blender compiler.
@@ -26,6 +26,8 @@ This is an experimental reconstruction app, not an original-project recovery too
 Version 0.2 supports primitives, custom meshes, tapered tube curves, text, procedural anatomical assets, textured materials, bevel/subdivision modifiers, object parenting, transform keyframes, shape keys, camera targets, depth of field, lights, and shot cuts. It **does not yet support** imported character assets, skinned rigs, facial animation, physics simulation, image textures, or asset search. Complex anatomy and characters remain approximate.
 
 The supplied Zack D. Films splinter Short is the first complex benchmark: a full 30.36-second, seven-shot reconstruction. It was authored and iteratively calibrated against the actual reference. It demonstrates editable complex scene construction, not automatic creator-level fidelity. The hand, tissue appearance, exact motion, captions, and flip transition still differ. See [the benchmark](docs/SPLINTER-BENCHMARK.md).
+
+The user rejected that reconstruction and clarified a 1:1 requirement. **That target remains unmet.** All 910 original frames have now been decoded, measured for adjacent-frame changes and optical flow, and visually reviewed in consecutive contact sheets. The [frame audit](docs/FRAME-AUDIT.md) records the motion and transition errors. `scripts/splinter_hero.py` builds a separate cutaway test; it is unfinished and is not a replacement full-video remake. The automatic app planner still uses sampled sheets; the complete frame audit currently runs through `scripts/analyze_reference_frames.py`.
 
 ## Run
 
