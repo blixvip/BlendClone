@@ -7,9 +7,9 @@
 Import a clip, let an AI planner describe the scene, compile it into native Blender objects,
 compare the render side by side, refine it in plain English, and export the `.blend`.
 
-![Ball-drop pipeline test: reference (left) vs Blender remake (right)](docs/media/ball-drop-comparison.gif)
+<img src="docs/media/showcase/showcase-grid.gif" alt="Four scenes compiled by BlendClone: studio turntable, domino cascade, neon title, low-poly island" width="880">
 
-<sub>Pipeline test: synthetic reference (left) vs the BlendClone remake rendered in Blender (right).</sub>
+<sub>Four scenes compiled from scene JSON into native Blender objects and rendered in Cycles. Every frame is editable in the exported <code>.blend</code>.</sub>
 
 ![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![Blender 5.1+](https://img.shields.io/badge/blender-5.1%2B-F5792A?logo=blender&logoColor=white)
@@ -25,6 +25,7 @@ compare the render side by side, refine it in plain English, and export the `.bl
 ## Contents
 
 - [What it does](#what-it-does)
+- [Gallery](#gallery)
 - [Screenshots](#screenshots)
 - [How it works](#how-it-works)
 - [Quick start](#quick-start)
@@ -47,6 +48,37 @@ compare the render side by side, refine it in plain English, and export the `.bl
 | **Export** | Editable `.blend`, remake MP4, side-by-side comparison MP4, and a project ZIP with the scene JSON and a standalone compiler. |
 
 Also included: procedural asset recipes (hands, skin cutaways, follicles, vessels, splinters, tweezers), shape-key swelling, procedural skin/wood textures, subsurface materials, depth of field, native frame-rate preservation (29.97 fps included), and Eevee/Cycles pinned per project so previews and finals match.
+
+## Gallery
+
+Each clip below is one JSON file in [`examples/`](examples). The same validated contract the AI planner writes goes through the same compiler, so this is exactly what the engine can build. Rebuild any of them with `python scripts/showcase.py --only <name>`.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/media/showcase/turntable.gif" alt="Studio turntable"></td>
+<td width="50%"><img src="docs/media/showcase/cascade.gif" alt="Domino cascade"></td>
+</tr>
+<tr>
+<td><b>Studio turntable</b> · coated, chrome and glass materials, noise-textured marble, depth of field, orbiting camera<br><sub><a href="examples/turntable.json">scene</a> · <a href="docs/media/showcase/turntable.mp4">MP4</a></sub></td>
+<td><b>Domino cascade</b> · staggered keyframes pivoting on the floor edge, two shots with a hard camera cut<br><sub><a href="examples/cascade.json">scene</a> · <a href="docs/media/showcase/cascade.mp4">MP4</a></sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/media/showcase/neon.gif" alt="Neon title"></td>
+<td width="50%"><img src="docs/media/showcase/island.gif" alt="Low-poly island"></td>
+</tr>
+<tr>
+<td><b>Neon title</b> · 3D text, emissive bezier tubes, glossy reflections, dolly push-in<br><sub><a href="examples/neon.json">scene</a> · <a href="docs/media/showcase/neon.mp4">MP4</a></sub></td>
+<td><b>Low-poly island</b> · one generated mesh with per-face materials by height, flat shading, sun light, flyover<br><sub><a href="examples/island.json">scene</a> · <a href="docs/media/showcase/island.mp4">MP4</a></sub></td>
+</tr>
+</table>
+
+### Reference vs remake
+
+The compare view plays the source and the rebuild in sync and scores every frame.
+
+<img src="docs/media/ball-drop-comparison.gif" alt="Ball-drop pipeline test: reference (left) vs Blender remake (right)" width="640">
+
+<sub>Pipeline test: synthetic reference (left) vs the BlendClone remake (right).</sub>
 
 ## Screenshots
 
@@ -77,6 +109,8 @@ flowchart LR
     F --> I[Render animation]
     I --> J[Score, compare, export]
 ```
+
+![Scene JSON compiled into a Blender render](docs/media/showcase/scene-to-render.png)
 
 - **Planner**: the official Codex CLI with your ChatGPT login (`BLENDREMAKE_MODEL`, default `gpt-6-astra`). No API key is stored by the app.
 - **Contract**: `app/models.py` is a Pydantic schema with bounded objects, meshes, keyframes and durations. It rejects parent cycles, missing materials, uncovered time and out-of-range keys before Blender starts.
@@ -113,12 +147,14 @@ py -3.12 -m venv .venv
 ## Verify
 
 ```powershell
-.venv\Scripts\python.exe -m pytest -q                 # 158 contract / API / pipeline tests
+.venv\Scripts\python.exe -m pytest -q                 # 165 contract / API / pipeline tests
 .venv\Scripts\python.exe scripts\renderer_check.py     # renders the synthetic ball drop in Blender
 .venv\Scripts\python.exe scripts\browser_check.py      # UI at 5 widths (app must be running)
 .venv\Scripts\python.exe scripts\fidelity_selftest.py  # fidelity scorer sanity check
 .venv\Scripts\python.exe scripts\ai_check.py           # optional live planner run (uses account allowance)
 ```
+
+`scripts\showcase.py` re-renders the gallery scenes and rebuilds the README media (needs Blender + FFmpeg).
 
 `scripts\export_check.py PROJECT_ID` rebuilds a finished project's ZIP in a fresh folder, reopens the `.blend`, and recaptures the comparison.
 
@@ -136,9 +172,9 @@ py -3.12 -m venv .venv
 | `app/render.py`, `app/pipeline.py`, `app/process.py` | Blender runs, encoding, job orchestration, owned-process control |
 | `app/server.py`, `app/store.py` | Local FastAPI app and project storage |
 | `web/` | Single-page workspace: import, library, compare, revise |
-| `examples/` | Small declarative scene examples |
+| `examples/` | Gallery scenes (turntable, cascade, neon, island) and the ball-drop fixture |
 | `scripts/` | Renderer / browser / export / fidelity / pilot tooling |
-| `tests/` | 158 pytest tests |
+| `tests/` | 165 pytest tests |
 | `docs/` | Architecture, plans, benchmarks, audits |
 
 ## Safety model

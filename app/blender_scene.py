@@ -454,6 +454,8 @@ def build(config):
         frames = folder / 'frames'
         frames.mkdir(exist_ok=True)
         scene.render.filepath = str(frames / 'frame-')
+        # Resuming after a crash (e.g. a GPU driver reset): keep frames that already finished.
+        scene.render.use_overwrite = not config.get('resume', False)
         bpy.ops.render.render(animation=True)
 
 

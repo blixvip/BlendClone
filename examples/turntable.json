@@ -1,0 +1,335 @@
+{
+  "engine": "CYCLES",
+  "title": "Studio turntable",
+  "summary": "Authored showcase: coated, metallic and glass materials on a bevelled pedestal with an orbiting camera.",
+  "limitations": [
+    "Authored scene; not a reconstruction of any reference video."
+  ],
+  "materials": [
+    {
+      "id": "lacquer",
+      "color": "#e8432e",
+      "roughness": 0.18,
+      "coat": 1.0
+    },
+    {
+      "id": "chrome",
+      "color": "#d9dde3",
+      "roughness": 0.08,
+      "metallic": 1.0
+    },
+    {
+      "id": "glass",
+      "color": "#cfe9ff",
+      "roughness": 0.02,
+      "transmission": 1.0
+    },
+    {
+      "id": "marble",
+      "color": "#ecebe6",
+      "roughness": 0.35,
+      "pattern": "noise",
+      "detail_color": "#b9b8b2",
+      "texture_scale": 3.0,
+      "bump": 0.15
+    },
+    {
+      "id": "stage",
+      "color": "#1c2026",
+      "roughness": 0.6
+    }
+  ],
+  "shots": [
+    {
+      "name": "Turntable",
+      "start": 0.0,
+      "end": 4.0,
+      "description": "Three hero objects on a marble pedestal; the camera orbits a quarter turn.",
+      "background": "#0f1216",
+      "camera": {
+        "location": [
+          7.0,
+          -7.0,
+          3.6
+        ],
+        "target": [
+          0.0,
+          0.0,
+          1.25
+        ],
+        "aperture": 2.8,
+        "keys": [
+          {
+            "t": 0.0,
+            "property": "location",
+            "value": [
+              5.913646009116162,
+              -7.047608876694597,
+              3.6
+            ],
+            "interpolation": "LINEAR"
+          },
+          {
+            "t": 0.6666666666666666,
+            "property": "location",
+            "value": [
+              7.216624117260096,
+              -5.706166519667993,
+              3.6
+            ],
+            "interpolation": "LINEAR"
+          },
+          {
+            "t": 1.3333333333333333,
+            "property": "location",
+            "value": [
+              8.221420290975392,
+              -4.128952457844251,
+              3.6
+            ],
+            "interpolation": "LINEAR"
+          },
+          {
+            "t": 2.0,
+            "property": "location",
+            "value": [
+              8.886517601859428,
+              -2.381135214943191,
+              3.6
+            ],
+            "interpolation": "LINEAR"
+          },
+          {
+            "t": 2.6666666666666665,
+            "property": "location",
+            "value": [
+              9.184435056095667,
+              -0.534932425976378,
+              3.6
+            ],
+            "interpolation": "LINEAR"
+          },
+          {
+            "t": 3.3333333333333335,
+            "property": "location",
+            "value": [
+              9.102863074944688,
+              1.3333731056266702,
+              3.6
+            ],
+            "interpolation": "LINEAR"
+          },
+          {
+            "t": 4.0,
+            "property": "location",
+            "value": [
+              8.645172111230357,
+              3.146585318596152,
+              3.6
+            ],
+            "interpolation": "LINEAR"
+          }
+        ]
+      },
+      "lights": [
+        {
+          "location": [
+            4.0,
+            -5.0,
+            7.0
+          ],
+          "target": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "color": "#ffe2c4",
+          "energy": 1400.0,
+          "size": 4.0
+        },
+        {
+          "location": [
+            -6.0,
+            2.0,
+            4.0
+          ],
+          "target": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "color": "#9fd2ff",
+          "energy": 900.0,
+          "size": 6.0
+        },
+        {
+          "location": [
+            0.0,
+            7.0,
+            5.0
+          ],
+          "target": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "energy": 700.0,
+          "size": 3.0
+        }
+      ],
+      "objects": [
+        {
+          "id": "pedestal",
+          "kind": "cylinder",
+          "material": "marble",
+          "location": [
+            0.0,
+            0.0,
+            0.3
+          ],
+          "scale": [
+            2.6,
+            2.6,
+            0.3
+          ],
+          "bevel": 0.05
+        },
+        {
+          "id": "cube",
+          "kind": "cube",
+          "material": "lacquer",
+          "location": [
+            -1.15,
+            -0.35,
+            1.2
+          ],
+          "scale": [
+            0.6,
+            0.6,
+            0.6
+          ],
+          "bevel": 0.12,
+          "keys": [
+            {
+              "t": 0.0,
+              "property": "rotation",
+              "value": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "interpolation": "LINEAR"
+            },
+            {
+              "t": 4.0,
+              "property": "rotation",
+              "value": [
+                0.0,
+                0.0,
+                90.0
+              ],
+              "interpolation": "LINEAR"
+            }
+          ]
+        },
+        {
+          "id": "ring",
+          "kind": "torus",
+          "material": "chrome",
+          "location": [
+            1.1,
+            -0.2,
+            1.45
+          ],
+          "rotation": [
+            70.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            0.75,
+            0.75,
+            0.75
+          ],
+          "keys": [
+            {
+              "t": 0.0,
+              "property": "rotation",
+              "value": [
+                70.0,
+                0.0,
+                0.0
+              ],
+              "interpolation": "LINEAR"
+            },
+            {
+              "t": 4.0,
+              "property": "rotation",
+              "value": [
+                70.0,
+                0.0,
+                180.0
+              ],
+              "interpolation": "LINEAR"
+            }
+          ]
+        },
+        {
+          "id": "orb",
+          "kind": "sphere",
+          "material": "glass",
+          "location": [
+            0.05,
+            0.95,
+            1.2
+          ],
+          "scale": [
+            0.6,
+            0.6,
+            0.6
+          ],
+          "subdivision": 1,
+          "keys": [
+            {
+              "t": 0.0,
+              "property": "location",
+              "value": [
+                0.05,
+                0.95,
+                1.2
+              ]
+            },
+            {
+              "t": 2.0,
+              "property": "location",
+              "value": [
+                0.05,
+                0.95,
+                1.55
+              ]
+            },
+            {
+              "t": 4.0,
+              "property": "location",
+              "value": [
+                0.05,
+                0.95,
+                1.2
+              ]
+            }
+          ]
+        },
+        {
+          "id": "floor",
+          "kind": "plane",
+          "material": "stage",
+          "scale": [
+            60.0,
+            60.0,
+            1.0
+          ]
+        }
+      ]
+    }
+  ]
+}

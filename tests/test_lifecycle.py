@@ -85,3 +85,47 @@ def test_engine_choice_survives_asset_expansion_and_saved_plan(tmp_path, monkeyp
     render.render(tmp_path, expand_assets(saved), meta, 'final', threading.Event())
     assert json.loads((tmp_path / 'preview.config.json').read_text())['engine'] == engine
     assert saved.engine == engine
+
+
+def _crashing_blender(folder, crash_after):
+    """Fake Blender that renders `crash_after` new frames per launch, then dies."""
+    import json
+    calls = []
+
+    def fake(args, **kwargs):
+        config = json.loads(Path(args[-1]).read_text(encoding='utf-8'))
+        calls.append(config.get('resume', False))
+        (folder / 'remake.blend').write_bytes(b'project')
+        frames = folder / 'frames'
+        frames.mkdir(exist_ok=True)
+        total = config['frame_count'] if config.get('frame_count') else round(config['duration'] * config['fps'])
+        written = 0
+        for i in range(1, total + 1):
+            path = frames / f'frame-{i:04d}.png'
+            if path.exists() and config.get('resume'):
+                continue
+            if crash_after is not None and written == crash_after:
+                raise RuntimeError('Blender exited unexpectedly')
+            path.write_bytes(b'png')
+            written += 1
+    return fake, calls
+
+
+def test_animation_resumes_after_mid_render_crash(tmp_path, monkeypatch):
+    monkeypatch.setattr(render, 'blender_binary', lambda: 'blender')
+    fake, calls = _crashing_blender(tmp_path, crash_after=20)
+    monkeypatch.setattr(render, 'run', fake)
+    render.render(tmp_path, fixture_plan(), dict(duration=2, width=160, height=90, fps=24),
+                  'draft', threading.Event(), mode='animation')
+    assert calls[0] is False and all(calls[1:]) and len(calls) == 3
+    assert len(list((tmp_path / 'frames').glob('frame-*.png'))) == 48
+
+
+def test_animation_gives_up_when_a_crash_makes_no_progress(tmp_path, monkeypatch):
+    monkeypatch.setattr(render, 'blender_binary', lambda: 'blender')
+    fake, calls = _crashing_blender(tmp_path, crash_after=0)
+    monkeypatch.setattr(render, 'run', fake)
+    with pytest.raises(RuntimeError):
+        render.render(tmp_path, fixture_plan(), dict(duration=2, width=160, height=90, fps=24),
+                      'draft', threading.Event(), mode='animation')
+    assert len(calls) == 1

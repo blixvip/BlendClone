@@ -7,6 +7,7 @@ from .models import validate_timing
 from .process import run
 
 ROOT = Path(__file__).resolve().parents[1]
+RESUME_ATTEMPTS = 4
 
 
 def blender_binary():
@@ -80,9 +81,29 @@ def render(folder, plan, meta, quality, cancel, *, mode='preview', times=None, e
         if on_progress and mode == 'animation' and time.monotonic()-last_tick[0] >= 3:
             last_tick[0] = time.monotonic()
             on_progress(sum(1 for _ in (folder/'frames').glob('frame-*.png')), max(1, round(meta['duration']*fps)))
-    run([blender_binary(), '--background', '--factory-startup', '--disable-autoexec', '--python-exit-code', '1',
-         '--python', ROOT / 'app' / 'blender_scene.py', '--', config_path], cwd=folder,
-        timeout=3600 if mode == 'animation' else 600, cancel=cancel, log=folder / f'blender-{mode}.log', on_tick=report)
+    def launch():
+        run([blender_binary(), '--background', '--factory-startup', '--disable-autoexec', '--python-exit-code', '1',
+             '--python', ROOT / 'app' / 'blender_scene.py', '--', config_path], cwd=folder,
+            timeout=3600 if mode == 'animation' else 600, cancel=cancel, log=folder / f'blender-{mode}.log', on_tick=report)
+    if mode != 'animation':
+        launch()
+    else:
+        # Long GPU renders can die mid-sequence (driver resets on consumer cards). Resume from the
+        # frames this call already finished instead of failing the job, as long as each attempt progresses.
+        frames_dir = folder / 'frames'
+        done = lambda: sorted(frames_dir.glob('frame-*.png'))
+        for attempt in range(RESUME_ATTEMPTS + 1):
+            before = len(done())
+            try:
+                launch()
+                break
+            except RuntimeError:
+                finished_now = done()
+                if attempt == RESUME_ATTEMPTS or len(finished_now) <= before:
+                    raise
+                finished_now[-1].unlink()  # the newest file may be a partial write
+                config['resume'] = True
+                config_path.write_text(json.dumps(config), encoding='utf-8')
     def finished(path):
         return path.is_file() and path.stat().st_size > 0
     if not finished(folder / 'remake.blend'):
