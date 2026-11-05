@@ -11,3 +11,6 @@ outputs/
 originals/
 *.blend
 .tmp/
+logs/
+docs/media/*.mp4
+.ruff_cache/

@@ -15,7 +15,9 @@ try {
 } catch {
     if ($_.Exception.Message -like '*belongs to another*') { throw }
 }
-Start-Process -FilePath $pythonExe -ArgumentList '-m', 'uvicorn', 'app.server:app', '--host', '127.0.0.1', '--port', '4331' -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $PSScriptRoot 'server-v2.log') -RedirectStandardError (Join-Path $PSScriptRoot 'server-v2-error.log')
+$logs = Join-Path $PSScriptRoot 'logs'
+New-Item -ItemType Directory -Force -Path $logs | Out-Null
+Start-Process -FilePath $pythonExe -ArgumentList '-m', 'uvicorn', 'app.server:app', '--host', '127.0.0.1', '--port', '4331' -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $logs 'server.log') -RedirectStandardError (Join-Path $logs 'server-error.log')
 for ($attempt = 0; $attempt -lt 30; $attempt++) {
     Start-Sleep -Milliseconds 500
     try {
@@ -26,4 +28,4 @@ for ($attempt = 0; $attempt -lt 30; $attempt++) {
         }
     } catch { }
 }
-throw 'BlendClone did not start. Check server-v2-error.log.'
+throw 'BlendClone did not start. Check logs\server-error.log.'

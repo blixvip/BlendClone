@@ -14,7 +14,8 @@ compare the render side by side, refine it in plain English, and export the `.bl
 ![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![Blender 5.1+](https://img.shields.io/badge/blender-5.1%2B-F5792A?logo=blender&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-local%20app-009688?logo=fastapi&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-158%20passing-2ea043)
+[![tests](https://github.com/blixvip/BlendClone/actions/workflows/tests.yml/badge.svg)](https://github.com/blixvip/BlendClone/actions/workflows/tests.yml)
+![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 ![Status](https://img.shields.io/badge/status-experimental-orange)
 
 </div>
@@ -32,6 +33,7 @@ compare the render side by side, refine it in plain English, and export the `.bl
 - [Safety model](#safety-model)
 - [Honest limits](#honest-limits)
 - [Roadmap](#roadmap)
+- [Contributing](#contributing)
 
 ## What it does
 
@@ -82,11 +84,11 @@ flowchart LR
 - **Fidelity**: `app/fidelity.py` scores every rendered frame against the reference (worst-tile SSIM, ΔE, optical flow, timing lag), with gates in `app/fidelity_gates.json` calibrated by `scripts/calibrate_fidelity.py`.
 - **Jobs**: one worker at a time, atomic `job.json` per project, cancel/retry/revise, and restarts mark unfinished jobs as interrupted.
 
-More detail: [Architecture](docs/ARCHITECTURE.md) · [Implementation](docs/IMPLEMENTATION.md) · [Final plan](docs/FINAL-PLAN.md)
+More detail: [all docs](docs/README.md) · [Architecture](docs/ARCHITECTURE.md) · [Implementation](docs/IMPLEMENTATION.md) · [Final plan](docs/FINAL-PLAN.md)
 
 ## Quick start
 
-**Requirements:** Windows, Python 3.12, Blender 5.1+, FFmpeg/ffprobe, and the Codex CLI (`codex login` with your ChatGPT account).
+**Requirements:** Windows (macOS/Linux untested), Python 3.12, Blender 5.1+, FFmpeg/ffprobe, and the Codex CLI (`codex login` with your ChatGPT account).
 
 ```powershell
 .\start.ps1
@@ -160,6 +162,10 @@ The complex benchmark (a 30 s, seven-shot anatomy short, [notes](docs/SPLINTER-B
 ## Roadmap
 
 See [docs/ROADMAP.md](docs/ROADMAP.md). The next major direction is stylized character shorts: rigged characters, facial expressions and story-driven scenes generated from a prompt, not only rebuilt from a reference.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Licensed under [MIT](LICENSE).
 
 ---
 

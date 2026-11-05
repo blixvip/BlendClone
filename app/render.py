@@ -16,7 +16,11 @@ def blender_binary():
     found = shutil.which('blender')
     if found:
         return found
-    candidates = list(Path('C:/Program Files/Blender Foundation').glob('Blender */blender.exe'))
+    candidates = [
+        *Path('C:/Program Files/Blender Foundation').glob('Blender */blender.exe'),
+        *Path('/Applications').glob('Blender*.app/Contents/MacOS/Blender'),
+        *Path('/opt').glob('blender*/blender'),
+    ]
     if candidates:
         return str(sorted(candidates, reverse=True)[0])
     raise ValueError('Blender is missing. Install Blender 5.1 or set BLENDER_PATH.')

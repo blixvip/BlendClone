@@ -57,4 +57,4 @@ Sensitivity check under those gates: identical rebuild 48/48 pass; ball moved 0/
 
 ### Scope decision
 
-The frame-accurate rebuild target is no longer the Zack D. Films splinter Short. Matching another creator's video frame for frame, including tracing their exact vessel layouts and particle positions, produces a copy of their work. The engine is developed and gated on original content (the synthetic scenes) and on clips kaigu owns. The splinter project stays as-is from earlier work.
+The frame-accurate rebuild target is no longer the Zack D. Films splinter Short. Matching another creator's video frame for frame, including tracing their exact vessel layouts and particle positions, produces a copy of their work. The engine is developed and gated on original content (the synthetic scenes) and on clips the maintainer owns. The splinter project stays as-is from earlier work.

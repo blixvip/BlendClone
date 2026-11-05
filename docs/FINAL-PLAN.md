@@ -9,7 +9,7 @@ Written 2026-09-13, revised the same day after checking every assumption against
 - **Phase 0: done.** Preview/final pipeline finished and wired to the frame audit; 60 tests pass.
 - **Phase 1: partly done.** Scoring, decode, worst-tile metrics, calibration, and the project-page score are built and proven on original content. Object masks, LPIPS, and a usable motion gate remain. Evidence in [FIDELITY-LOG.md](FIDELITY-LOG.md).
 - **Target changed.** The pilot and segment grind (Phases 2 and 6) run on original or owned clips, not the splinter Short. A frame-for-frame rebuild of another creator's video is a copy of their work. Wherever this plan says "splinter" as the thing to match, read "a representative owned clip"; the splinter measurements above remain useful as a description of what hard material looks like.
-- **Next:** pick an owned clip (for example one of kaigu's own 3D or motion-graphics renders), recalibrate on it, then run the Phase 2 pilot on one second of it.
+- **Next:** pick an owned clip (for example one of the maintainer's own 3D or motion-graphics renders), recalibrate on it, then run the Phase 2 pilot on one second of it.
 
 ## Facts this plan is built on (measured, not assumed)
 
@@ -35,14 +35,14 @@ So "1:1" is defined as:
 1. **Timing exact:** same frame count and rate; every cut, transition, grasp, release, and caption change on the same frame.
 2. **Layout exact:** every visible object in the same place, size, silhouette, and pose on every frame, within the gates below.
 3. **Look indistinguishable at playback:** color, lighting, focus, texture, and motion pass the calibrated perceptual gates.
-4. **kaigu watches it and can't tell.** Agents produce evidence; only kaigu's viewing counts as the visual pass. (Agents have over-claimed visual quality on other projects.)
+4. **the maintainer watches it and can't tell.** Agents produce evidence; only the maintainer's viewing counts as the visual pass. (Agents have over-claimed visual quality on other projects.)
 
 ### Hard rules
 
 - The remake is built from geometry, materials, lights, and animation. Source pixels are never used as textures, projections, compositor plates, or fallback frames. The validator rejects any texture that perceptually matches a source frame. A pixel-copying remake is a fake pass.
 - The model never writes executable Python; new abilities go into the trusted schema and compiler.
 - Thresholds are frozen after calibration. A failing segment is fixed, never passed by loosening a gate.
-- **Third-party references (including the splinter Short) are private local benchmarks.** They measure the engine. Their remakes stay on this machine: exports carry no source audio, and captions are masked out of scoring instead of retyped. The output the engine is built to ship is reconstruction of footage kaigu owns (Phase 7).
+- **Third-party references (including the splinter Short) are private local benchmarks.** They measure the engine. Their remakes stay on this machine: exports carry no source audio, and captions are masked out of scoring instead of retyped. The output the engine is built to ship is reconstruction of footage the maintainer owns (Phase 7).
 
 ---
 
@@ -81,7 +81,7 @@ Captions are masked out of every metric on third-party references.
 
 ### 1c. Calibrate thresholds (then freeze them)
 
-Measure what *invisible* differences score, using the source against slightly altered copies of itself: 1 px shift, 0.5 px blur, re-encode at 80% bitrate, +1% exposure, 1-frame offset. That gives a noise floor for each metric. Separately, render the same Blender scene twice with different sampling seeds. Set each gate just above the larger of those floors, inspect the heatmaps at those levels with kaigu, then freeze the numbers in `app/fidelity_gates.json`.
+Measure what *invisible* differences score, using the source against slightly altered copies of itself: 1 px shift, 0.5 px blur, re-encode at 80% bitrate, +1% exposure, 1-frame offset. That gives a noise floor for each metric. Separately, render the same Blender scene twice with different sampling seeds. Set each gate just above the larger of those floors, inspect the heatmaps at those levels with the maintainer, then freeze the numbers in `app/fidelity_gates.json`.
 
 The earlier fixed numbers (LPIPS ≤ 0.10, SSIM ≥ 0.90, IoU ≥ 0.95, ΔE ≤ 5, ≤ 19 px, flow ≤ 2 px) are starting guesses only; calibration replaces them.
 
@@ -170,18 +170,18 @@ Storage: keep only the current iteration's frames and locked native renders; del
 1. One editable Blender project, one timeline, all segments.
 2. Final render: 910 frames, 1080×1920, 30000/1001 fps (overnight).
 3. Harness on the full render: every frame passes every frozen gate.
-4. **kaigu's review:** side-by-side at 1×, at 0.25×, then an A/B flip on 20 random frames. Any visible difference sends that segment back to Phase 6.
+4. **the maintainer's review:** side-by-side at 1×, at 0.25×, then an A/B flip on 20 random frames. Any visible difference sends that segment back to Phase 6.
 5. Engineering: `.blend` reopens with everything editable; ZIP rebuilds independently; the anti-copy texture check passes; export contains no source audio.
 6. Update `docs/ACCEPTANCE.md` with the real numbers.
 
-## Phase 8: Automatic for new videos, gated on footage kaigu owns
+## Phase 8: Automatic for new videos, gated on footage the maintainer owns
 
 Splinter gets there with a human-assisted loop. One-click 1:1 on arbitrary video is a research-grade problem; treat each step as unproven until measured.
 
 1. Wire audit → segments → tracks → fitters → segment loop → final render → acceptance report into `app/pipeline.py`, with per-segment caching and retry.
-2. UI: per-segment pass/fail, heatmap review video, iteration log. A job says "1:1 pass" only when Phase 7 criteria pass; otherwise "approximate" with failing segments listed. Read `C:/code/UI-PLAYBOOK.md` first and verify desktop + narrow screenshots.
+2. UI: per-segment pass/fail, heatmap review video, iteration log. A job says "1:1 pass" only when Phase 7 criteria pass; otherwise "approximate" with failing segments listed. Verify desktop + narrow screenshots.
 3. Benchmark set, all through the same frozen harness:
-   - 2–3 clips kaigu owns (his own motion-graphics or 3D renders). These are the gating benchmarks and the legitimate output case.
+   - 2–3 clips the maintainer owns (his own motion-graphics or 3D renders). These are the gating benchmarks and the legitimate output case.
    - One synthetic Blender scene with exact ground truth (regression guard).
    - The splinter Short (private stress test).
 4. Success = a new owned clip of similar complexity reaches "1:1 pass" with no hand-authored steps.
@@ -209,4 +209,4 @@ Only the first three phases are estimated with confidence. The pilot replaces th
 - **4 GB GPU.** SAM 2 small with CPU offload and RAFT-small fit; large segmentation or image-to-3D models don't. Fitting avoids Blender wherever possible.
 - **Disk.** 41 GB free. Pruning in Phase 6 is mandatory, not optional.
 - **Dependency licenses.** OK: SAM 2 (Apache 2.0), RAFT/torchvision (BSD), LPIPS (BSD), `cma` (BSD), Optuna (MIT). Avoid: CoTracker (non-commercial), MANO-based hand models (restricted).
-- **Publishing.** A 1:1 remake of someone else's video is still their video. Third-party remakes stay local; the engine and kaigu's own clips are what ship.
+- **Publishing.** A 1:1 remake of someone else's video is still their video. Third-party remakes stay local; the engine and the maintainer's own clips are what ship.
