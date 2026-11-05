@@ -3,6 +3,7 @@ import json
 import math
 import socket
 import sys
+import uuid
 from fractions import Fraction
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -72,12 +73,21 @@ def prepare(source, folder, start, duration, cancel):
     if duration < .25:
         raise ValueError('Select at least a quarter second of video.')
     target = folder / 'reference.mp4'
+    temporary = folder / f'.reference-{uuid.uuid4().hex}.mp4'
     fps=info['fps']
-    run(['ffmpeg', '-y', '-v', 'error', '-protocol_whitelist', 'file,pipe', '-format_whitelist', FORMATS,
-         '-ss', str(start), '-i', source, '-t', str(duration), '-map', '0:v:0', '-map', '0:a:0?',
-         '-vf', f"scale='min(1080,iw)':'min(1080,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2,setsar=1,fps={fps}",
-         '-c:v', 'libx264', '-preset', 'fast', '-crf', '19', '-c:a', 'aac', '-movflags', '+faststart', target], timeout=180, cancel=cancel)
-    return probe(target)
+    try:
+        run(['ffmpeg', '-y', '-v', 'error', '-protocol_whitelist', 'file,pipe', '-format_whitelist', FORMATS,
+             '-ss', str(start), '-i', source, '-t', str(duration), '-map', '0:v:0', '-map', '0:a:0?',
+             '-vf', f"scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps={fps}",
+             '-c:v', 'libx264', '-preset', 'fast', '-crf', '19', '-c:a', 'aac', '-movflags', '+faststart', temporary],
+             timeout=180, cancel=cancel, log=folder / 'normalize.log')
+        meta = probe(temporary)
+        if cancel.is_set():
+            raise Cancelled()
+        temporary.replace(target)
+        return meta
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def timestamps(video, duration):

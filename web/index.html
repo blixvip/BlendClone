@@ -3,19 +3,19 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="Reconstruct reference videos as editable Blender projects.">
-  <title>BlendRemake — video to Blender</title>
+  <title>BlendClone — video to Blender</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/app.js" defer></script>
 </head>
 <body>
   <aside class="sidebar">
-    <a class="brand" href="/" aria-label="BlendRemake home"><span class="brand-symbol">b<span>r</span></span><span>BlendRemake<small>REFERENCE TO 3D</small></span></a>
+    <a class="brand" href="/" aria-label="BlendClone home"><span class="brand-symbol">b<span>c</span></span><span>BlendClone<small>REFERENCE TO 3D</small></span></a>
     <button id="new-project" class="new-project"><span>＋</span> New remake <span class="key-hint">N</span></button>
     <div class="library-heading"><h2>Your projects</h2><span id="project-count">0</span></div>
     <label class="sr-only" for="search">Search projects</label><input id="search" class="search" placeholder="Search projects…" type="search">
     <div id="library" class="library"><p class="muted">Loading projects…</p></div>
-    <div class="sidebar-footer"><span class="local-dot"></span> Local workspace <span>v0.2</span></div>
+    <div class="sidebar-footer"><span class="local-dot"></span> Local workspace <span>v0.5</span></div>
   </aside>
   <main>
     <header class="topbar"><div><span class="muted">Workspace</span><span class="separator">/</span><span id="breadcrumb">New remake</span></div><div class="engine"><span id="engine-dot" class="status-dot"></span><span id="engine-label">Checking Blender…</span></div></header>
@@ -24,7 +24,7 @@
       <div id="error" class="error" role="alert" hidden></div>
       <section id="create-view">
         <div class="intro"><div class="eyebrow">A NEW DIMENSION FOR YOUR REFERENCES</div><h1>Rebuild a video<br>in Blender.</h1><p>The shot, the movement, the details.<br>Turn a reference into a 3D project you can make your own.</p></div>
-        <div class="workflow" aria-label="Reconstruction workflow"><span><b>01</b> Reference</span><i></i><span><b>02</b> Reconstruct</span><i></i><span><b>03</b> Compare & export</span></div>
+        <div class="workflow" aria-label="Reconstruction workflow"><span><b>01</b> Reference</span><i></i><span><b>02</b> Preview & refine</span><i></i><span><b>03</b> Render & export</span></div>
         <form id="import-form" class="import-grid">
           <div class="import-main">
             <div class="section-heading"><h2>Start with a reference</h2><span>01 / INPUT</span></div>
@@ -37,14 +37,15 @@
           </div>
           <div class="settings">
             <div class="section-heading"><h2>The remake</h2><span>02 / SETUP</span></div>
-            <p class="settings-intro">Rebuild up to 60 seconds. Longer sequences take more time to render.</p>
+            <p class="settings-intro">Rebuild up to 60 seconds. Compare still previews and give corrections before rendering the full video.</p>
             <div class="time-fields"><div><label for="start">Start at <span>seconds</span></label><input id="start" name="start" type="number" min="0" max="86400" step="0.1" value="0" required></div><div><label for="duration">Length <span>seconds</span></label><input id="duration" name="duration" type="number" min="0.25" max="60" step="0.01" value="8" required></div></div>
-            <label for="quality">Render quality</label><select id="quality" name="quality"><option value="draft">Draft · 432p / faster iteration</option><option value="standard">Standard · 720p / more detail</option></select>
+            <label for="quality">Final render quality</label><select id="quality" name="quality"><option value="draft">Draft · 432p / faster iteration</option><option value="standard">Standard · 720p / more detail</option><option value="final">Final · reference resolution / full detail</option></select>
+            <label class="check-row"><input id="preview-first" name="preview_first" type="checkbox" checked><span>Preview before final render<small>Pause for your corrections before rendering</small></span></label>
             <label class="check-row"><input id="review" name="review" type="checkbox" checked><span>Compare and refine<small>One Astra review of rendered frames</small></span></label>
             <label class="check-row"><input id="audio" name="audio" type="checkbox" checked><span>Keep reference audio<small>Include source sound in the video export</small></span></label>
             <div class="output-summary"><span>YOU’LL GET</span><p><b>.blend</b> Editable 3D project</p><p><b>.mp4</b> Remake & comparison</p><p><b>.zip</b> Project & scene data</p></div>
-            <button id="submit" class="primary" type="submit">Rebuild in Blender <span>↗</span></button>
-            <p class="submit-note">Uses your connected ChatGPT account.<br>Selected reference frames are sent for analysis.</p>
+            <button id="submit" class="primary" type="submit">Build preview <span>↗</span></button>
+            <p class="submit-note">Uses your connected ChatGPT account.<br>Reference contact sheets are sent for analysis.</p>
           </div>
         </form>
         <div class="expectation"><span class="asterisk">✳</span><p><strong>A reconstruction, with room to refine.</strong> Includes editable anatomical assets and swelling animation. Complex characters and anatomy still need visual refinement. Every result stays editable.</p></div>
@@ -52,18 +53,25 @@
       <section id="project-view" hidden>
         <div class="project-title"><div><div class="eyebrow">BLENDER RECONSTRUCTION</div><h1 id="job-title">Your remake</h1></div><span id="job-status" class="badge">Queued</span></div>
         <div id="job-progress" class="job-progress"><div class="progress-top"><span id="job-message" role="status" aria-live="polite">Preparing reference…</span><span id="job-percent">0%</span></div><progress id="progress" max="100" value="0"></progress><div class="job-actions"><span class="muted">You can leave this page. Work continues locally.</span><button id="cancel" class="text-button">Cancel job</button><button id="retry" class="secondary" hidden>Retry project</button></div></div>
+        <div id="preview-notice" class="preview-notice" hidden><span class="eyebrow">PREVIEW READY</span><h2>Check the scene before the full render.</h2><p>Compare the matching frames, add corrections, then render when you’re ready. These stills do not verify motion or a 1:1 match.</p></div>
+        <div id="analysis-coverage" class="analysis-coverage" hidden><strong>Reference coverage</strong><span id="analysis-machine"></span><span id="analysis-visual"></span></div>
+        <div id="fidelity-score" class="analysis-coverage fidelity-score" hidden><strong>Fidelity score</strong><span id="fidelity-verdict"></span><span id="fidelity-detail"></span></div>
+        <div id="benchmark-review" class="analysis-coverage" hidden><strong>Reconstruction acceptance</strong><span id="benchmark-status"></span><a id="benchmark-link" class="secondary" target="_blank" rel="noopener">Open frame-by-frame review ↗</a></div>
         <div class="comparison-heading"><h2>Reference / Remake</h2><div class="view-switch" aria-label="Preview layout"><button id="compare-mode" class="active" aria-pressed="true">Compare</button><button id="rebuilt-mode" aria-pressed="false">Remake only</button></div></div>
         <div id="comparison" class="comparison">
-          <div id="reference-pane" class="video-pane"><div class="pane-label"><span>REFERENCE</span><span>01</span></div><video id="reference-video" playsinline preload="metadata"></video><div id="reference-empty" class="video-empty"><span>01</span><p>Your reference will appear here</p></div></div>
-          <div class="video-pane"><div class="pane-label"><span>BLENDER REMAKE</span><span>02</span></div><video id="remake-video" playsinline preload="metadata" muted></video><div id="remake-empty" class="video-empty"><span>02</span><p>Waiting for the Blender render</p></div></div>
+          <div id="reference-pane" class="video-pane"><div class="pane-label"><span>REFERENCE</span><span>01</span></div><video id="reference-video" playsinline preload="metadata"></video><img id="reference-still" class="preview-still" alt="Reference at the selected preview time" hidden><div id="reference-empty" class="video-empty"><span>01</span><p>Your reference will appear here</p></div></div>
+          <div class="video-pane"><div class="pane-label"><span>BLENDER REMAKE</span><span>02</span></div><video id="remake-video" playsinline preload="metadata" muted></video><img id="remake-still" class="preview-still" alt="Blender render at the selected preview time" hidden><div id="remake-empty" class="video-empty"><span>02</span><p>Waiting for the Blender render</p></div></div>
         </div>
-        <div class="transport"><button id="play" class="play" aria-label="Play comparison" disabled>▶</button><span id="play-time">0:00 / 0:00</span><input id="seek" aria-label="Playback position" type="range" min="0" max="1" step="0.01" value="0" disabled><button id="mute" class="text-button" aria-pressed="false">Sound on</button><select id="speed" aria-label="Playback speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option></select></div>
+        <div id="preview-transport" class="preview-transport" hidden><button id="previous-preview" class="secondary" aria-label="Previous preview">← Previous</button><div aria-live="polite"><strong id="preview-time">0:00.000</strong><span id="preview-position">Frame 1 of 1</span></div><button id="next-preview" class="secondary" aria-label="Next preview">Next →</button></div>
+        <div id="video-transport" class="transport"><div class="frame-controls"><button id="previous-frame" class="frame-step" aria-label="Previous video frame" disabled>‹</button><button id="play" class="play" aria-label="Play comparison" disabled>▶</button><button id="next-frame" class="frame-step" aria-label="Next video frame" disabled>›</button></div><span id="play-time">0:00.000 / 0:00</span><input id="seek" aria-label="Playback position" type="range" min="0" max="1" step="0.001" value="0" disabled><button id="mute" class="text-button" aria-pressed="false">Sound on</button><select id="speed" aria-label="Playback speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option></select></div>
+        <form id="render-form" class="render-form" hidden><div><label for="render-quality">Render the full video</label><p>Keep the scene editable. Export video at the reference frame rate.</p></div><select id="render-quality" aria-label="Full video render quality"><option value="draft">Draft · 432p</option><option value="standard">Standard · 720p</option><option value="final">Final · reference resolution</option></select><button id="render-submit" class="primary" type="submit">Render full video ↗</button></form>
+        <form id="revise-form" class="revision" hidden><div class="revision-heading"><label for="revision-brief">Refine this remake</label><button id="use-time" class="text-button" type="button">Use this time</button></div><div><textarea id="revision-brief" rows="2" maxlength="4000" required placeholder="At 0:02.500, move the camera closer and make the main object taller…"></textarea><button id="revise-submit" class="primary" type="submit">Revise preview ↗</button></div><p id="revision-hint" class="revision-hint">Corrections create new still previews for you to compare.</p></form>
         <div id="downloads" class="downloads" hidden><a id="download-blend" class="primary" download>Download .blend <span>↓</span></a><a id="download-video" class="secondary" download>Remake MP4 ↓</a><a id="download-comparison" class="secondary" download>Comparison MP4 ↓</a><a id="download-project" class="secondary" download>Full project ZIP ↓</a></div>
+        <p id="download-note" class="revision-hint" hidden>Video and ZIP exports are from the previous render. Render this preview to update them.</p>
         <p id="job-summary" class="job-summary"></p>
         <div class="detail-grid"><div><div class="section-heading"><h2>Shot breakdown</h2><span id="shot-count"></span></div><div id="shots" class="shots"><p class="muted">Scene analysis will appear here.</p></div></div><div><div class="section-heading"><h2>Reconstruction notes</h2><span>REVIEW</span></div><ul id="limitations" class="limitations"><li>Review the result against your reference before using it.</li></ul></div></div>
-        <form id="revise-form" class="revision" hidden><label for="revision-brief">Refine this remake</label><div><textarea id="revision-brief" rows="2" maxlength="4000" required placeholder="Move the camera closer, make the main object taller, slow down the first movement…"></textarea><button class="primary" type="submit">Revise & render ↗</button></div></form>
       </section>
-      <footer class="page-footer"><span>Made to be opened. Built to be edited.</span><span>BLENDREMAKE / LOCAL STUDIO</span></footer>
+      <footer class="page-footer"><span>Made to be opened. Built to be edited.</span><span>BLENDCLONE / LOCAL STUDIO</span></footer>
     </div>
   </main>
 </body>

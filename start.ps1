@@ -8,22 +8,22 @@ if (-not (Test-Path -LiteralPath $pythonExe)) {
     if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed.' }
 }
 try {
-    $existing = Invoke-RestMethod -Uri 'http://127.0.0.1:4328/api/health' -TimeoutSec 15
-    if ($existing.app -ne 'blendremake') { throw 'Port 4328 belongs to another application.' }
-    Start-Process 'http://127.0.0.1:4328'
+    $existing = Invoke-RestMethod -Uri 'http://127.0.0.1:4331/api/health' -TimeoutSec 15
+    if ($existing.app -ne 'blendremake') { throw 'Port 4331 belongs to another application.' }
+    Start-Process 'http://127.0.0.1:4331'
     return
 } catch {
     if ($_.Exception.Message -like '*belongs to another*') { throw }
 }
-Start-Process -FilePath $pythonExe -ArgumentList '-m', 'uvicorn', 'app.server:app', '--host', '127.0.0.1', '--port', '4328' -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $PSScriptRoot 'server-v2.log') -RedirectStandardError (Join-Path $PSScriptRoot 'server-v2-error.log')
+Start-Process -FilePath $pythonExe -ArgumentList '-m', 'uvicorn', 'app.server:app', '--host', '127.0.0.1', '--port', '4331' -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $PSScriptRoot 'server-v2.log') -RedirectStandardError (Join-Path $PSScriptRoot 'server-v2-error.log')
 for ($attempt = 0; $attempt -lt 30; $attempt++) {
     Start-Sleep -Milliseconds 500
     try {
-        $ready = Invoke-RestMethod -Uri 'http://127.0.0.1:4328/api/health' -TimeoutSec 2
+        $ready = Invoke-RestMethod -Uri 'http://127.0.0.1:4331/api/health' -TimeoutSec 2
         if ($ready.app -eq 'blendremake') {
-            Start-Process 'http://127.0.0.1:4328'
+            Start-Process 'http://127.0.0.1:4331'
             return
         }
     } catch { }
 }
-throw 'BlendRemake did not start. Check server-v2-error.log.'
+throw 'BlendClone did not start. Check server-v2-error.log.'

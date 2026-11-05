@@ -61,6 +61,38 @@ def visible_during(obj, start, end, fps):
                 point.interpolation = 'CONSTANT'
 
 
+def animate_frames(obj, keys):
+    for key in sorted(keys, key=lambda k: k['frame']):
+        prop = 'rotation_euler' if key['property'] == 'rotation' else key['property']
+        value = tuple(math.radians(v) for v in key['value']) if prop == 'rotation_euler' else key['value']
+        setattr(obj, prop, value)
+        obj.keyframe_insert(data_path=prop, frame=key['frame'] + 1)
+    interpolation = {(key['frame'] + 1, 'rotation_euler' if key['property'] == 'rotation' else key['property']): key['interpolation'] for key in keys}
+    for curve in curves(obj):
+        for point in curve.keyframe_points:
+            method = interpolation.get((round(point.co.x), curve.data_path))
+            if method:
+                point.interpolation = method
+
+
+def sampled_mesh(obj, samples):
+    """Absolute native shape keys retain measured topology at each sampled frame."""
+    if not samples:
+        return
+    obj.shape_key_add(name='Basis')
+    data = obj.data.shape_keys
+    data.use_relative = False
+    for sample in sorted(samples, key=lambda s: s['frame']):
+        block = obj.shape_key_add(name=f"Measured frame {sample['frame']}")
+        block.data.foreach_set('co', [v for point in sample['vertices'] for v in point])
+        block.interpolation = 'KEY_LINEAR'
+        data.eval_time = block.frame
+        data.keyframe_insert(data_path='eval_time', frame=sample['frame'] + 1)
+    for curve in curves(data):
+        for key in curve.keyframe_points:
+            key.interpolation = 'LINEAR'
+
+
 def move_to_collection(obj, collection):
     for old in list(obj.users_collection):
         old.objects.unlink(obj)
@@ -116,6 +148,14 @@ def make_object(spec, collection, materials):
     if spec['material'] and obj.data and hasattr(obj.data, 'materials'):
         obj.data.materials.append(materials[spec['material']])
     if obj.type == 'MESH':
+        if spec.get('face_materials'):
+            slots = {mat.name:index for index,mat in enumerate(obj.data.materials)}
+            for name in dict.fromkeys(spec['face_materials']):
+                if name not in slots:
+                    slots[name] = len(obj.data.materials)
+                    obj.data.materials.append(materials[name])
+            for polygon,name in zip(obj.data.polygons,spec['face_materials']):
+                polygon.material_index = slots[name]
         for poly in obj.data.polygons:
             poly.use_smooth = spec['smooth']
         if spec['bevel']:
@@ -127,6 +167,16 @@ def make_object(spec, collection, materials):
     return obj
 
 
+def material_color_track(tree, sockets, samples):
+    for sample in samples:
+        for socket in sockets:
+            socket.default_value = rgba(sample['color'])
+            socket.keyframe_insert('default_value', frame=sample['frame'] + 1)
+    for curve in curves(tree):
+        for point in curve.keyframe_points:
+            point.interpolation = 'LINEAR'
+
+
 def material_nodes(mat, spec):
     tree = mat.node_tree
     node = tree.nodes.get('Principled BSDF')
@@ -134,6 +184,22 @@ def material_nodes(mat, spec):
         emission=tree.nodes.new('ShaderNodeEmission')
         emission.inputs['Color'].default_value=rgba(spec['color'])
         emission.inputs['Strength'].default_value=max(.01,spec.get('emission',1))
+        material_color_track(tree, [emission.inputs['Color']], spec.get('color_samples', []))
+        if spec.get('pattern') == 'gradient':
+            coord = tree.nodes.new('ShaderNodeTexCoord')
+            center = tree.nodes.new('ShaderNodeVectorMath'); center.operation = 'SUBTRACT'
+            center.inputs[1].default_value = (.52, .8, 0)
+            tree.links.new(coord.outputs['Window'], center.inputs[0])
+            scale = tree.nodes.new('ShaderNodeVectorMath'); scale.operation = 'MULTIPLY'
+            scale.inputs[1].default_value = spec.get('stretch', (1.8, 1.1, 0))
+            tree.links.new(center.outputs[0], scale.inputs[0])
+            distance = tree.nodes.new('ShaderNodeVectorMath'); distance.operation = 'LENGTH'
+            tree.links.new(scale.outputs[0], distance.inputs[0])
+            ramp = tree.nodes.new('ShaderNodeValToRGB')
+            ramp.color_ramp.elements[0].color = rgba(spec['color'])
+            ramp.color_ramp.elements[1].color = rgba(spec['detail_color'])
+            tree.links.new(distance.outputs['Value'], ramp.inputs[0])
+            tree.links.new(ramp.outputs['Color'], emission.inputs['Color'])
         output=emission.outputs[0]
         if spec.get('camera_only'):
             path=tree.nodes.new('ShaderNodeLightPath')
@@ -155,6 +221,7 @@ def material_nodes(mat, spec):
     node.inputs['Coat Roughness'].default_value = .24
     node.inputs['Transmission Weight'].default_value = spec.get('transmission',0)
     if spec.get('pattern','solid') == 'solid':
+        material_color_track(tree, [node.inputs['Base Color'], node.inputs['Emission Color']], spec.get('color_samples', []))
         return
     coord=tree.nodes.new('ShaderNodeTexCoord')
     scale=tree.nodes.new('ShaderNodeVectorMath');scale.operation='MULTIPLY'
@@ -215,6 +282,48 @@ def shape_animation(obj, shapes, start, fps):
                     point.interpolation=closest['interpolation']
 
 
+def caption_objects(scene, captions, cameras, fps, folder):
+    if not captions:
+        return
+    font_file = folder / 'fonts' / 'arialbd.ttf'
+    if not font_file.is_file():
+        font_file = Path('C:/Windows/Fonts/arialbd.ttf')
+    if not font_file.is_file():
+        raise ValueError('Caption font Arial Bold is missing')
+    font = bpy.data.fonts.load(str(font_file))
+    font.pack()
+    palette = {}
+    for name, color in [('Caption white','#ffffff'),('Caption stroke','#000000')]:
+        material = bpy.data.materials.new(name)
+        material.use_nodes = True
+        material_nodes(material, dict(unlit=True,color=color,emission=1))
+        palette[name] = material
+    for camera, start, end in cameras:
+        depth = 1.0
+        height = camera.data.ortho_scale if camera.data.type == 'ORTHO' else 2 * depth * math.tan(camera.data.angle_y / 2)
+        width = height * scene.render.resolution_x / scene.render.resolution_y
+        for index, caption in enumerate(captions):
+            first, last = max(caption['first_frame'], round(start*fps)), min(caption['end_frame'], round(end*fps))
+            if first >= last:
+                continue
+            for layer, (dx,dy) in enumerate([(x,y) for x,y in [(-1,0),(1,0),(0,-1),(0,1),(-.7,-.7),(-.7,.7),(.7,-.7),(.7,.7),(0,0)]]):
+                data = bpy.data.curves.new(f'Caption {index} text', 'FONT')
+                data.body, data.font, data.align_x, data.align_y = caption['text'], font, 'CENTER', 'CENTER'
+                obj = bpy.data.objects.new(f'Caption {index} layer {layer}',data)
+                scene.collection.objects.link(obj)
+                obj.parent = camera
+                obj.location = ((caption['x']-.5)*width + dx*caption['stroke']*height,
+                                (.5-caption['y'])*height + dy*caption['stroke']*height,
+                                -depth - (.001 if layer < 8 else 0))
+                data.materials.append(palette['Caption stroke' if layer < 8 else 'Caption white'])
+                bpy.context.view_layer.update()
+                obj.scale = (caption['width']*width/max(obj.dimensions.x,1e-6),caption['height']*height/max(obj.dimensions.y,1e-6),1)
+                obj.visible_shadow = False
+                obj.visible_diffuse = False
+                obj.visible_glossy = False
+                visible_during(obj,first/fps,last/fps,fps)
+
+
 def build(config):
     folder = Path(config['folder']).resolve()
     plan = json.loads((folder / config.get('plan', 'plan.json')).read_text(encoding='utf-8'))
@@ -225,7 +334,7 @@ def build(config):
     scene.render.fps = config['fps']
     scene.render.fps_base = config.get('fps_base',1)
     scene.frame_start = 1
-    scene.frame_end = max(1, round(config['duration'] * fps))
+    scene.frame_end = config.get('frame_count') or max(1, round(config['duration'] * fps))
     scene.render.engine = config.get('engine','CYCLES')
     scene.cycles.samples = config.get('samples', 16)
     scene.cycles.use_denoising = True
@@ -264,6 +373,7 @@ def build(config):
         mat.use_nodes = True
         material_nodes(mat,spec)
         materials[spec['id']] = mat
+    cameras = []
     for index, shot in enumerate(plan['shots']):
         collection = bpy.data.collections.new(f'{index+1:02d} · {shot["name"]}')
         scene.collection.children.link(collection)
@@ -273,7 +383,9 @@ def build(config):
             if spec['parent']:
                 obj.parent = objects[spec['parent']]
             animate(obj, spec['keys'], shot['start'], fps)
+            animate_frames(obj, spec.get('frame_keys', []))
             shape_animation(obj,spec.get('shapes',[]),shot['start'],fps)
+            sampled_mesh(obj, spec.get('mesh_samples', []))
             visible_during(obj, shot['start'], shot['end'], fps)
         camera_spec = shot['camera']
         camera_data = bpy.data.cameras.new(f'Camera {index+1}')
@@ -283,6 +395,7 @@ def build(config):
             camera_data.type = 'ORTHO'
             camera_data.ortho_scale = camera_spec['ortho_scale']
         camera = bpy.data.objects.new(camera_data.name, camera_data)
+        cameras.append((camera, shot['start'], shot['end']))
         collection.objects.link(camera)
         camera.location = camera_spec['location']
         target = bpy.data.objects.new(f'Camera target {index+1}', None)
@@ -296,6 +409,8 @@ def build(config):
         constraint.target, constraint.track_axis, constraint.up_axis = target, 'TRACK_NEGATIVE_Z', 'UP_Y'
         animate(camera, camera_spec['keys'], shot['start'], fps)
         animate(target, camera_spec['target_keys'], shot['start'], fps)
+        animate_frames(camera, camera_spec.get('frame_keys', []))
+        animate_frames(target, camera_spec.get('target_frame_keys', []))
         if index == 0:
             scene.camera = camera
         marker = scene.timeline_markers.new(shot['name'], frame=1+round(shot['start']*fps))
@@ -319,6 +434,7 @@ def build(config):
     for curve in curves(world.node_tree):
         for point in curve.keyframe_points:
             point.interpolation = 'CONSTANT'
+    caption_objects(scene, plan.get('captions', []), cameras, fps, folder)
     scene.frame_set(1)
     scene.render.filepath = '//frames/'
     notes = bpy.data.texts.new('ABOUT THIS REMAKE')

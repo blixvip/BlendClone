@@ -1,106 +1,166 @@
-# BlendRemake
+<div align="center">
 
-Turn a reference video into an **editable Blender reconstruction**. Import a public video link or file, select a short section, rebuild its scene with Astra, compare the render, and export a `.blend`, MP4, comparison MP4, or complete project ZIP.
+# BlendClone
 
-This is a separate local Windows app and repository. It does not import, modify, or require MotionClone.
+**Turn a reference video into an editable Blender project.**
+
+Import a clip, let an AI planner describe the scene, compile it into native Blender objects,
+compare the render side by side, refine it in plain English, and export the `.blend`.
+
+![Ball-drop pipeline test: reference (left) vs Blender remake (right)](docs/media/ball-drop-comparison.gif)
+
+<sub>Pipeline test: synthetic reference (left) vs the BlendClone remake rendered in Blender (right).</sub>
+
+![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
+![Blender 5.1+](https://img.shields.io/badge/blender-5.1%2B-F5792A?logo=blender&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-local%20app-009688?logo=fastapi&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-158%20passing-2ea043)
+![Status](https://img.shields.io/badge/status-experimental-orange)
+
+</div>
+
+---
+
+## Contents
+
+- [What it does](#what-it-does)
+- [Screenshots](#screenshots)
+- [How it works](#how-it-works)
+- [Quick start](#quick-start)
+- [Verify](#verify)
+- [Repository layout](#repository-layout)
+- [Safety model](#safety-model)
+- [Honest limits](#honest-limits)
+- [Roadmap](#roadmap)
 
 ## What it does
 
-- Imports YouTube, Vimeo, and X links through yt-dlp, or local MP4/MOV/WebM files.
-- Selects a 0.25–60 second section, starting at any valid source timestamp; defaults to 8 seconds.
-- Samples timestamped frames, including extra samples around strong visual changes.
-- Uses `gpt-6-astra` through the official Codex CLI and your ChatGPT login to describe geometry, materials, cameras, lighting, shot boundaries, and animation.
-- Compiles validated scene data into native Blender objects. No model-authored Python executes.
-- Optionally compares source/rendered frames at matching timestamps and performs one correction pass.
-- Includes editable procedural hands, fingers, skin surfaces and cutaways, follicles, vessels, nerves, fat cells, splinters, and tweezers.
-- Supports swelling through native shape keys, procedural skin/wood textures, subsurface materials, and depth of field.
-- Preserves the source frame rate, including 29.97 fps, with Eevee for asset scenes and Cycles otherwise; draft has a 432-pixel longest edge, standard 720. Cycles GPU is selected when available, with CPU fallback. Older saved references remain at their previously normalized rate.
-- Saves projects and job status locally; supports cancellation, retry, and natural-language revisions.
-- Plays the original and remake together, with shared seeking, speed, and audio controls.
-- Exports native `.blend`, rendered MP4, side-by-side comparison, and a project ZIP with the scene JSON and standalone Blender compiler.
+| | |
+|---|---|
+| **Import** | YouTube / Vimeo / X links via `yt-dlp`, or local MP4 / MOV / WebM. Pick any 0.25–60 s section. |
+| **Analyse** | Samples timestamped frames (extra samples around big visual changes) and asks the planner model for geometry, materials, cameras, lights, shot cuts and animation. |
+| **Compile** | Validated scene JSON → native Blender objects, keyframes, shape keys, cameras and lights. Model-written Python **never** runs. |
+| **Compare** | Synchronized reference / remake players with shared seeking, speed and audio, plus a per-frame fidelity score (layout SSIM, colour ΔE, motion, timing). |
+| **Refine** | Type a correction ("at 0:02.5 move the camera closer"). One review pass compares source and render frames automatically. |
+| **Export** | Editable `.blend`, remake MP4, side-by-side comparison MP4, and a project ZIP with the scene JSON and a standalone compiler. |
 
-## Quality limits
+Also included: procedural asset recipes (hands, skin cutaways, follicles, vessels, splinters, tweezers), shape-key swelling, procedural skin/wood textures, subsurface materials, depth of field, native frame-rate preservation (29.97 fps included), and Eevee/Cycles pinned per project so previews and finals match.
 
-This is an experimental reconstruction app, not an original-project recovery tool. Astra infers unseen geometry, lighting, and motion from sampled images. A successful render does not demonstrate visual similarity.
+## Screenshots
 
-Version 0.2 supports primitives, custom meshes, tapered tube curves, text, procedural anatomical assets, textured materials, bevel/subdivision modifiers, object parenting, transform keyframes, shape keys, camera targets, depth of field, lights, and shot cuts. It **does not yet support** imported character assets, skinned rigs, facial animation, physics simulation, image textures, or asset search. Complex anatomy and characters remain approximate.
+<table>
+<tr>
+<td width="50%"><img src="docs/media/app-home.png" alt="New remake screen"></td>
+<td width="50%"><img src="docs/media/app-project.png" alt="Project compare view"></td>
+</tr>
+<tr>
+<td align="center"><sub>Start a remake: link or upload, section, quality</sub></td>
+<td align="center"><sub>Compare, refine, export</sub></td>
+</tr>
+</table>
 
-The supplied Zack D. Films splinter Short is the first complex benchmark: a full 30.36-second, seven-shot reconstruction. It was authored and iteratively calibrated against the actual reference. It demonstrates editable complex scene construction, not automatic creator-level fidelity. The hand, tissue appearance, exact motion, captions, and flip transition still differ. See [the benchmark](docs/SPLINTER-BENCHMARK.md).
+## How it works
 
-The user rejected that reconstruction and clarified a 1:1 requirement. **That target remains unmet.** All 910 original frames have now been decoded, measured for adjacent-frame changes and optical flow, and visually reviewed in consecutive contact sheets. The [frame audit](docs/FRAME-AUDIT.md) records the motion and transition errors. `scripts/splinter_hero.py` builds a separate cutaway test; it is unfinished and is not a replacement full-video remake. The automatic app planner still uses sampled sheets; the complete frame audit currently runs through `scripts/analyze_reference_frames.py`.
+```mermaid
+flowchart LR
+    A[Link or upload] --> B[Normalize clip]
+    B --> C[Timestamped frames]
+    C --> D[AI scene analysis]
+    D --> E[Validate scene JSON]
+    E --> F[Compile Blender scene]
+    F --> G[Render preview frames]
+    G --> H[AI visual correction]
+    C --> H
+    H --> E
+    F --> I[Render animation]
+    I --> J[Score, compare, export]
+```
 
-## Run
+- **Planner**: the official Codex CLI with your ChatGPT login (`BLENDREMAKE_MODEL`, default `gpt-6-astra`). No API key is stored by the app.
+- **Contract**: `app/models.py` is a Pydantic schema with bounded objects, meshes, keyframes and durations. It rejects parent cycles, missing materials, uncovered time and out-of-range keys before Blender starts.
+- **Compiler**: `app/blender_scene.py` is repository-owned Blender Python that turns the contract into editable collections per shot.
+- **Fidelity**: `app/fidelity.py` scores every rendered frame against the reference (worst-tile SSIM, ΔE, optical flow, timing lag), with gates in `app/fidelity_gates.json` calibrated by `scripts/calibrate_fidelity.py`.
+- **Jobs**: one worker at a time, atomic `job.json` per project, cancel/retry/revise, and restarts mark unfinished jobs as interrupted.
 
-Install Python 3.12, Blender 5.1+, FFmpeg/ffprobe, and the official Codex CLI. Run `codex login` using your ChatGPT account.
+More detail: [Architecture](docs/ARCHITECTURE.md) · [Implementation](docs/IMPLEMENTATION.md) · [Final plan](docs/FINAL-PLAN.md)
+
+## Quick start
+
+**Requirements:** Windows, Python 3.12, Blender 5.1+, FFmpeg/ffprobe, and the Codex CLI (`codex login` with your ChatGPT account).
 
 ```powershell
 .\start.ps1
 ```
 
-The launcher creates its own environment when needed and starts the app at **http://127.0.0.1:4328**. It opens the browser and leaves the server running hidden. It never closes or restarts Warp or any unrelated application.
+This creates `.venv` if needed, starts the app at **http://127.0.0.1:4331** and opens your browser.
 
 Manual setup:
 
 ```powershell
 py -3.12 -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.lock.txt
-.venv\Scripts\python.exe -m uvicorn app.server:app --host 127.0.0.1 --port 4328
+.venv\Scripts\python.exe -m uvicorn app.server:app --host 127.0.0.1 --port 4331
 ```
 
-Optional environment variables:
-
 | Variable | Default | Purpose |
-| --- | --- | --- |
-| `BLENDER_PATH` | Detect installed Blender | Full path to Blender executable |
-| `BLENDREMAKE_MODEL` | `gpt-6-astra` | Model available through your Codex account |
-| `BLENDREMAKE_DATA` | `./data/projects` | Project storage directory |
-
-## Privacy and execution
-
-Source videos, rendered media, scene data, logs, and project state stay under the configured data directory. Selected source frames and review renders are sent through Codex for model analysis. Video-link imports contact the source platform. This is not an offline-only app. Generated projects and diagnostic logs are excluded from Git.
-
-Only repository-owned Blender Python executes. Scene output is a Pydantic-validated declarative specification, with bounded objects, geometry, keyframes, references, and durations. It cannot request filesystem access, shell commands, imports, downloads, or process cleanup. The app binds to loopback, restricts Host and Origin, checks mutation headers and upload sizes, and exposes only named artifacts. It is a **local single-user app**, not a hardened public hosting service.
-
-Downloads contain no credentials or prompt logs. Project ZIPs exclude the original video and reference frames. A standalone `.blend` contains editable scene objects and animation; retained source audio is included in MP4 exports, not the `.blend`.
-
-Jobs run one at a time. Cancellation signals only the exact child process created for that step. Server restarts mark unfinished jobs interrupted; retry reuses a saved validated plan. A revision requests a fresh plan. Completed frame directories are retained locally for inspection and re-encoding, so long renders can consume substantial disk space.
+|---|---|---|
+| `BLENDER_PATH` | auto-detect | Full path to `blender.exe` |
+| `BLENDREMAKE_MODEL` | `gpt-6-astra` | Planner model available to your Codex account |
+| `BLENDREMAKE_DATA` | `./data/projects` | Where projects are stored |
 
 ## Verify
 
 ```powershell
-.venv\Scripts\python.exe -m pytest -q
-.venv\Scripts\python.exe scripts\renderer_check.py
-.venv\Scripts\python.exe scripts\browser_check.py
+.venv\Scripts\python.exe -m pytest -q                 # 158 contract / API / pipeline tests
+.venv\Scripts\python.exe scripts\renderer_check.py     # renders the synthetic ball drop in Blender
+.venv\Scripts\python.exe scripts\browser_check.py      # UI at 5 widths (app must be running)
+.venv\Scripts\python.exe scripts\fidelity_selftest.py  # fidelity scorer sanity check
+.venv\Scripts\python.exe scripts\ai_check.py           # optional live planner run (uses account allowance)
 ```
 
-The renderer check builds a synthetic two-second ball-drop scene, renders native Blender frames, verifies frame count/duration, and encodes the remake and comparison. Browser checks use installed Chrome and the running local app, and cover five widths plus import, loading/error/success, retry, playback, and revision. HTTP fixtures avoid additional AI work; screenshots go to `outputs/`.
+`scripts\export_check.py PROJECT_ID` rebuilds a finished project's ZIP in a fresh folder, reopens the `.blend`, and recaptures the comparison.
 
-Optional **live Astra** check, using the synthetic reference created above:
-
-```powershell
-.venv\Scripts\python.exe scripts\ai_check.py
-```
-
-This submits a real reconstruction and review through the connected ChatGPT account, uses account allowance, saves a project in the app library, and checks all downloads. Inspect its comparison visually. It is not a benchmark for real creator footage.
-
-Run `.venv\Scripts\python.exe scripts\export_check.py PROJECT_ID` for a completed local project to rebuild its ZIP in a separate directory, reopen the `.blend`, and capture the actual comparison.
-
-For the complex reference benchmark, run `.venv\Scripts\python.exe scripts\splinter_reference.py` for representative keyframes, or add `--animate` for the full sequence. It downloads the specified public reference if absent. Run the authoring script when its project is idle; afterward use Retry in the app to render the saved plan through the normal pipeline.
-
-## Repository
+## Repository layout
 
 | Path | Purpose |
-| --- | --- |
+|---|---|
 | `app/models.py` | Validated scene contract and timing rules |
-| `app/ai.py` | Astra analysis, correction prompts, Codex bridge |
-| `app/blender_scene.py` | Deterministic JSON-to-Blender compiler |
-| `app/anatomy.py`, `app/geometry.py` | Trusted editable asset recipes and mesh builders |
-| `app/media.py` | Link imports, video normalization, frame sampling |
-| `app/render.py` | Blender execution, video and comparison encoding |
-| `app/pipeline.py` | Persistent job orchestration, retry, export packaging |
-| `app/server.py` | Local HTTP application and input boundaries |
-| `web/` | Import, library, comparison, and revision workspace |
+| `app/ai.py` | Planner prompts, correction loop, Codex bridge |
+| `app/blender_scene.py` | Deterministic JSON → Blender compiler |
+| `app/blender_worker.py`, `app/worker.py` | Persistent Blender worker for fitting passes |
+| `app/anatomy.py`, `app/geometry.py`, `app/reference_anatomy.py` | Trusted procedural asset recipes and mesh builders |
+| `app/fidelity.py`, `app/measurements.py`, `app/fitting.py` | Frame scoring, measured tracks, parameter fitting |
+| `app/media.py`, `app/reference.py` | Imports, normalization, frame sampling, source manifests |
+| `app/render.py`, `app/pipeline.py`, `app/process.py` | Blender runs, encoding, job orchestration, owned-process control |
+| `app/server.py`, `app/store.py` | Local FastAPI app and project storage |
+| `web/` | Single-page workspace: import, library, compare, revise |
 | `examples/` | Small declarative scene examples |
-| `tests/`, `scripts/` | Contract, API, renderer, and browser checks |
+| `scripts/` | Renderer / browser / export / fidelity / pilot tooling |
+| `tests/` | 158 pytest tests |
+| `docs/` | Architecture, plans, benchmarks, audits |
 
-See [Architecture and next steps](docs/ARCHITECTURE.md) and [Acceptance evidence](docs/ACCEPTANCE.md).
+## Safety model
+
+- Only repository-owned Blender Python executes. The model emits data, not code: no file paths, shell commands, imports or downloads.
+- The server binds to loopback, checks Host/Origin and mutation headers, limits upload size, and serves only named artifacts.
+- Cancellation signals only the exact child process a job started. Nothing else is touched.
+- Project ZIPs exclude the source video and reference frames. Downloads never contain credentials or prompt logs.
+- Selected frames and review renders **are** sent to the planner model, and link imports contact the source site. It is a local app, not an offline one.
+
+## Honest limits
+
+This is an experimental **reconstruction** tool, not a way to recover an original project file. The planner infers unseen geometry, lighting and motion from sampled images, so **a successful render does not mean a close match**. The fidelity score exists to make that gap visible.
+
+Supported today: primitives, custom meshes, tube curves, text, procedural anatomy assets, textured and per-face materials, bevel/subdivision, parenting, transform / shape-key / material keyframes, camera targets, depth of field, lights, shot cuts, and packed captions.
+
+**Not supported yet:** skinned rigs, facial animation, imported character assets, physics, image textures, asset search. Characters and complex anatomy remain approximate.
+
+The complex benchmark (a 30 s, seven-shot anatomy short, [notes](docs/SPLINTER-BENCHMARK.md), [frame audit](docs/FRAME-AUDIT.md), [fidelity log](docs/FIDELITY-LOG.md)) builds a full editable scene. It does **not** reach frame-accurate fidelity yet. Third-party reference footage is not included in this repository.
+
+## Roadmap
+
+See [docs/ROADMAP.md](docs/ROADMAP.md). The next major direction is stylized character shorts: rigged characters, facial expressions and story-driven scenes generated from a prompt, not only rebuilt from a reference.
+
+---
+
+<sub>Display name BlendClone; folder, environment variables and protocol identifiers keep the original `blendremake` name for compatibility.</sub>

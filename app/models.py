@@ -19,6 +19,36 @@ class Key(Model):
     interpolation: Literal['LINEAR', 'BEZIER', 'CONSTANT'] = 'BEZIER'
 
 
+class Timeline(Model):
+    fps_num: Annotated[int, Field(ge=1, le=240000)] = 30000
+    fps_den: Annotated[int, Field(ge=1, le=10000)] = 1001
+    frame_count: Annotated[int, Field(ge=1, le=14400)]
+    source_start_frame: Annotated[int, Field(ge=0, le=10000000)] = 0
+
+    @model_validator(mode='after')
+    def rate(self):
+        if not 1 <= self.fps_num / self.fps_den <= 240:
+            raise ValueError('timeline frame rate must be between 1 and 240')
+        return self
+
+
+class FrameKey(Model):
+    frame: Annotated[int, Field(ge=0, le=14399)]
+    property: Literal['location', 'rotation', 'scale']
+    value: Vec3
+    interpolation: Literal['LINEAR', 'BEZIER', 'CONSTANT'] = 'LINEAR'
+
+
+class MeshSample(Model):
+    frame: Annotated[int, Field(ge=0, le=14399)]
+    vertices: Annotated[list[Vec3], Field(min_length=1, max_length=150000)]
+
+
+class MaterialSample(Model):
+    frame: Annotated[int, Field(ge=0, le=14399)]
+    color: Color
+
+
 class Material(Model):
     id: Annotated[str, Field(pattern=r'^[a-zA-Z0-9_-]{1,60}$')]
     color: Color
@@ -28,13 +58,20 @@ class Material(Model):
     subsurface: Annotated[float, Field(ge=0, le=1)] = 0
     coat: Annotated[float, Field(ge=0, le=1)] = 0
     transmission: Annotated[float, Field(ge=0, le=1)] = 0
-    pattern: Literal['solid', 'noise', 'skin', 'cells', 'wood', 'wound'] = 'solid'
+    pattern: Literal['solid', 'noise', 'skin', 'cells', 'wood', 'wound', 'gradient'] = 'solid'
     detail_color: Color = '#ffffff'
     texture_scale: Annotated[float, Field(gt=0, le=1000)] = 8
     bump: Annotated[float, Field(ge=0, le=1)] = 0
     stretch: Vec3 = (1,1,1)
     unlit: bool = False
     camera_only: bool = False
+    color_samples: Annotated[list[MaterialSample], Field(max_length=14400)] = []
+
+    @model_validator(mode='after')
+    def animated_color(self):
+        if self.color_samples and self.pattern != 'solid':
+            raise ValueError('material color samples require a solid pattern')
+        return self
 
 
 class ShapeKey(Model):
@@ -57,6 +94,7 @@ class Object(Model):
     scale: Vec3 = (1, 1, 1)
     vertices: Annotated[list[Vec3], Field(max_length=150000)] = []
     faces: Annotated[list[list[Annotated[int, Field(ge=0)]]], Field(max_length=150000)] = []
+    face_materials: Annotated[list[Annotated[str, Field(min_length=1, max_length=60)]], Field(max_length=150000)] = []
     points: Annotated[list[Vec3], Field(max_length=2000)] = []
     thickness: Annotated[float, Field(ge=.001, le=10)] = .04
     radii: Annotated[list[Annotated[float, Field(ge=0, le=20)]], Field(max_length=2000)] = []
@@ -66,9 +104,17 @@ class Object(Model):
     subdivision: Annotated[int, Field(ge=0, le=2)] = 0
     smooth: bool = True
     keys: Annotated[list[Key], Field(max_length=240)] = []
+    frame_keys: Annotated[list[FrameKey], Field(max_length=43200)] = []
+    mesh_samples: Annotated[list[MeshSample], Field(max_length=120)] = []
 
     @model_validator(mode='after')
     def geometry(self):
+        if self.face_materials and (self.kind != 'mesh' or len(self.face_materials) != len(self.faces)):
+            raise ValueError('face materials must match the explicit mesh faces')
+        if self.shapes and self.mesh_samples:
+            raise ValueError('sampled mesh animation cannot combine with relative shape deformations')
+        if self.mesh_samples and (self.kind != 'mesh' or any(len(s.vertices) != len(self.vertices) for s in self.mesh_samples)):
+            raise ValueError('mesh samples must preserve the explicit mesh vertex count')
         if self.kind == 'mesh':
             if not self.vertices or not self.faces:
                 raise ValueError('mesh requires vertices and faces')
@@ -95,6 +141,8 @@ class Camera(Model):
     aperture: Annotated[float, Field(ge=0, le=64)] = 0
     keys: Annotated[list[Key], Field(max_length=120)] = []
     target_keys: Annotated[list[Key], Field(max_length=120)] = []
+    frame_keys: Annotated[list[FrameKey], Field(max_length=43200)] = []
+    target_frame_keys: Annotated[list[FrameKey], Field(max_length=14400)] = []
 
 
 class Light(Model):
@@ -133,7 +181,22 @@ class Shot(Model):
         return self
 
 
+class Caption(Model):
+    text: Annotated[str, Field(min_length=1, max_length=500)]
+    first_frame: Annotated[int, Field(ge=0, le=14399)]
+    end_frame: Annotated[int, Field(ge=1, le=14400)]
+    x: Annotated[float, Field(ge=0, le=1)] = .5
+    y: Annotated[float, Field(ge=0, le=1)] = .8
+    width: Annotated[float, Field(gt=0, le=1)] = .5
+    height: Annotated[float, Field(gt=0, le=.5)] = .035
+    stroke: Annotated[float, Field(ge=0, le=.02)] = .0015
+
+
 class Plan(Model):
+    schema_version: Literal[1, 2] = 1
+    timeline: Timeline | None = None
+    captions: Annotated[list[Caption], Field(max_length=300)] = []
+    engine: Literal['auto', 'CYCLES', 'BLENDER_EEVEE'] = 'auto'
     view_transform: Literal['AgX', 'Standard'] = 'AgX'
     title: Annotated[str, Field(min_length=1, max_length=100)]
     summary: Annotated[str, Field(max_length=4000)]
@@ -143,6 +206,13 @@ class Plan(Model):
 
     @model_validator(mode='after')
     def material_references(self):
+        for material in self.materials:
+            frames = [sample.frame for sample in material.color_samples]
+            if frames and (not self.timeline or max(frames) >= self.timeline.frame_count or len(frames) != len(set(frames))):
+                raise ValueError('material color samples require unique frames inside the timeline')
+        for caption in self.captions:
+            if not self.timeline or not caption.first_frame < caption.end_frame <= self.timeline.frame_count:
+                raise ValueError('caption must have a valid frame interval inside the timeline')
         ids = {m.id for m in self.materials}
         if len(ids) != len(self.materials):
             raise ValueError('material IDs must be unique')
@@ -151,13 +221,44 @@ class Plan(Model):
         if sum(len(o.vertices) for s in self.shots for o in s.objects) > 1000000:
             raise ValueError('project exceeds one million explicit vertices')
         for shot in self.shots:
+            tracks = [shot.camera.frame_keys, shot.camera.target_frame_keys]
+            tracks.extend(o.frame_keys for o in shot.objects)
+            if any(k.property != 'location' for k in shot.camera.target_frame_keys):
+                raise ValueError('camera target frame keys must animate location')
+            for track in tracks:
+                if track and self.timeline is None:
+                    raise ValueError('frame keys require a timeline')
+                seen = set()
+                for key in track:
+                    if key.frame >= self.timeline.frame_count:
+                        raise ValueError('frame key is outside the timeline')
+                    identity = (key.frame, key.property)
+                    if identity in seen:
+                        raise ValueError('duplicate frame key')
+                    seen.add(identity)
             for obj in shot.objects:
                 if obj.material and obj.material not in ids:
                     raise ValueError(f'unknown material: {obj.material}')
+                if any(name not in ids for name in obj.face_materials):
+                    raise ValueError('unknown face material')
+                if obj.mesh_samples:
+                    if self.timeline is None:
+                        raise ValueError('mesh samples require a timeline')
+                    frames = [s.frame for s in obj.mesh_samples]
+                    if len(frames) != len(set(frames)) or max(frames) >= self.timeline.frame_count:
+                        raise ValueError('duplicate or out-of-range mesh sample')
+                if obj.keys and obj.frame_keys:
+                    raise ValueError('use either seconds or frame keys for an object')
+            if (shot.camera.keys and shot.camera.frame_keys) or (shot.camera.target_keys and shot.camera.target_frame_keys):
+                raise ValueError('use either seconds or frame keys for a camera track')
+        if sum(len(s.vertices) for shot in self.shots for o in shot.objects for s in o.mesh_samples) > 3000000:
+            raise ValueError('project exceeds three million sampled vertices')
         return self
 
 
 def validate_timing(plan: Plan, duration: float):
+    if plan.timeline and abs(plan.timeline.frame_count * plan.timeline.fps_den / plan.timeline.fps_num - duration) > 1e-6:
+        raise ValueError('duration must match the exact timeline frame count and rate')
     cursor = 0.0
     for shot in plan.shots:
         if abs(shot.start - cursor) > .002 or shot.end <= shot.start:
@@ -173,8 +274,28 @@ def validate_timing(plan: Plan, duration: float):
         raise ValueError('shots must cover the complete reference duration')
 
 
-def strict_schema():
-    schema = Plan.model_json_schema()
+class ObjectAdjustment(Model):
+    shot: Annotated[int, Field(ge=0, le=11)]
+    object_id: Annotated[str, Field(min_length=1, max_length=60)]
+    translation: Vec3 = (0,0,0)
+    scale_multiplier: tuple[Annotated[float, Field(gt=0, le=10)], Annotated[float, Field(gt=0, le=10)], Annotated[float, Field(gt=0, le=10)]] = (1,1,1)
+
+
+class LightAdjustment(Model):
+    shot: Annotated[int, Field(ge=0, le=11)]
+    index: Annotated[int, Field(ge=0, le=11)]
+    light: Light
+
+
+class MeasuredRevision(Model):
+    materials: Annotated[list[Material], Field(max_length=100)] = []
+    adjustments: Annotated[list[ObjectAdjustment], Field(max_length=600)] = []
+    lights: Annotated[list[LightAdjustment], Field(max_length=144)] = []
+    limitations: Annotated[list[Annotated[str, Field(max_length=1000)]], Field(max_length=20)] = []
+
+
+def strict_schema(model=Plan):
+    schema = model.model_json_schema()
     def visit(value):
         if isinstance(value, dict):
             value.pop('default', None)

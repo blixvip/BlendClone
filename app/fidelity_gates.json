@@ -1,0 +1,12 @@
+{
+  "calibrated": true,
+  "calibrated_on": "2026-09-13",
+  "basis": "Built-in synthetic ball-drop scene (original content). Floors are content-dependent; recalibrate on a representative owned clip before trusting a pass on very different material.",
+  "margin": 1.25,
+  "gates": {
+    "coarse_ssim_min": 0.9381,
+    "delta_e_max": 3.483,
+    "flow_epe_max": 10.919,
+    "timing_lag_max": 0
+  }
+}

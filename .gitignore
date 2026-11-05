@@ -6,3 +6,8 @@ outputs/
 *.log
 .env
 *.blend1
+
+# third-party reference footage and local renders
+originals/
+*.blend
+.tmp/

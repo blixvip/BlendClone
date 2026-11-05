@@ -57,6 +57,17 @@ def test_material_and_curve_radius_parameters_are_bounded():
         Object(id='hair',kind='curve',points=[(0,0,0),(0,0,1)],radii=[1])
 
 
+def test_native_portrait_detail_survives_reference_preparation(tmp_path):
+    import threading
+    from app.process import run
+    from app.media import prepare
+    source = tmp_path / 'source.mp4'
+    run(['ffmpeg', '-y', '-v', 'error', '-f', 'lavfi', '-i',
+         'color=c=red:s=1080x1920:r=30:d=0.3', '-c:v', 'libx264', source])
+    meta = prepare(source, tmp_path, 0, .3, threading.Event())
+    assert (meta['width'], meta['height']) == (1080, 1920)
+
+
 def test_fractional_source_rate_survives_reference_preparation(tmp_path):
     import threading
     from app.process import run
