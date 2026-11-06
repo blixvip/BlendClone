@@ -203,6 +203,12 @@ See [docs/ROADMAP.md](docs/ROADMAP.md). The next major direction is stylized cha
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Licensed under [MIT](LICENSE).
 
+## Contributors
+
+Thank you to everyone who has contributed to BlendClone! New here? Read [CONTRIBUTING.md](CONTRIBUTING.md) and pick a [good first issue](https://github.com/blixvip/BlendClone/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+
+<a href="https://github.com/blixvip/BlendClone/graphs/contributors"><img src="https://contrib.rocks/image?repo=blixvip/BlendClone" alt="Contributors" /></a>
+
 ---
 
 <sub>Display name BlendClone; folder, environment variables and protocol identifiers keep the original `blendremake` name for compatibility.</sub>
