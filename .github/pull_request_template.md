@@ -1,4 +1,4 @@
-<!-- Not in the contributor Discord yet? Join before your PR: https://discord.gg/wJfHQXfEMM -->
+<!-- Not in the contributor Discord yet? Join before your PR: https://discord.gg/grokbot -->
 ## What changed
 
 ## Checks
