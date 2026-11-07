@@ -1,6 +1,6 @@
 # Contributing
 
-> 💬 **Before you open a PR, join the [blix open source Discord](https://discord.gg/wJfHQXfEMM).** It's the home for contributors across every blixvip repo: ask questions, run ideas by us, and talk through your PR.
+> 💬 **Before you open a PR, join the [blix open source Discord](https://discord.gg/grokbot).** It's the home for contributors across every blixvip repo: ask questions, run ideas by us, and talk through your PR.
 
 1. `py -3.12 -m venv .venv && .venv\Scripts\python.exe -m pip install -r requirements.lock.txt`
 2. Make the change. Keep the model's output declarative: new capabilities go into `app/models.py` (contract) and `app/blender_scene.py` (compiler), never into executed model text.
