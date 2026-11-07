@@ -3,6 +3,8 @@ from app.models import Material, Object, Plan, fixture_plan, validate_timing
 from app.geometry import loft, heightfield, ellipsoid_cloud, deform_vertices
 from app.media import download_arguments
 
+from conftest import requires_ffmpeg
+
 
 def test_split_youtube_streams_are_supported():
     args = download_arguments('https://www.youtube.com/shorts/example', 'source.bin')
@@ -57,6 +59,7 @@ def test_material_and_curve_radius_parameters_are_bounded():
         Object(id='hair',kind='curve',points=[(0,0,0),(0,0,1)],radii=[1])
 
 
+@requires_ffmpeg
 def test_native_portrait_detail_survives_reference_preparation(tmp_path):
     import threading
     from app.process import run
@@ -68,6 +71,7 @@ def test_native_portrait_detail_survives_reference_preparation(tmp_path):
     assert (meta['width'], meta['height']) == (1080, 1920)
 
 
+@requires_ffmpeg
 def test_fractional_source_rate_survives_reference_preparation(tmp_path):
     import threading
     from app.process import run

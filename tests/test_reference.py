@@ -7,8 +7,12 @@ import numpy as np
 import pytest
 from PIL import Image
 
+from conftest import requires_ffmpeg
+
 from app.process import Cancelled, run
 from app.reference import AuditConfig, audit
+
+pytestmark = requires_ffmpeg
 
 
 def make_video(path, count=12, fps=6, color=210):
