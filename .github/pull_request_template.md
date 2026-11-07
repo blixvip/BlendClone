@@ -1,3 +1,4 @@
+<!-- Not in the contributor Discord yet? Join before your PR: https://discord.gg/wJfHQXfEMM -->
 ## What changed
 
 ## Checks
