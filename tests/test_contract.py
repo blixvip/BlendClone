@@ -62,3 +62,14 @@ def test_stale_job_is_recoverable_after_restart(tmp_path):
     store.update(job['id'], status='running')
     Store(tmp_path).recover()
     assert store.get(job['id'])['status'] == 'interrupted'
+
+
+def test_job_json_without_created_does_not_break_listing(tmp_path):
+    store = Store(tmp_path)
+    job = store.create({'title': 'Test'})
+    (tmp_path / 'aaaaaaaaaaaa').mkdir()
+    (tmp_path / 'aaaaaaaaaaaa' / 'job.json').write_text('{"id": "aaaaaaaaaaaa", "status": "queued"}')
+    jobs = store.list()
+    assert [entry['id'] for entry in jobs] == [job['id'], 'aaaaaaaaaaaa']
+    Store(tmp_path).recover()
+    assert store.get('aaaaaaaaaaaa')['status'] == 'interrupted'

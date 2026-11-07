@@ -54,7 +54,7 @@ class Store:
                 jobs.append(self.get(path.parent.name))
             except (ValueError, OSError):
                 continue
-        return sorted(jobs, key=lambda j: j['created'], reverse=True)
+        return sorted(jobs, key=lambda j: j.get('created') or '', reverse=True)
 
     def recover(self):
         for job in self.list():
