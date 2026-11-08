@@ -18,6 +18,8 @@ compare the render side by side, refine it in plain English, and export the `.bl
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 ![Status](https://img.shields.io/badge/status-experimental-orange)
 
+🛠 **Built in the open** — 3 contributors · 13 good first issues · we review PRs within 24h → [start here](https://github.com/blixvip/BlendClone/issues/14)
+
 </div>
 
 ---
@@ -203,7 +205,9 @@ See [docs/ROADMAP.md](docs/ROADMAP.md). The next major direction is stylized cha
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Licensed under [MIT](LICENSE).
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/blixvip/BlendClone?quickstart=1)
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) — its "Your first PR in 10 minutes" section gets you from zero to a pull request. The Codespace comes with Python 3.12, FFmpeg and all dependencies installed, so `python -m pytest` runs straight away (Blender is not included; the tests don't need it). Licensed under [MIT](LICENSE).
 
 <!-- discord-incentive:start -->
 ### 💬 Why join the Discord first
