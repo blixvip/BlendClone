@@ -149,7 +149,7 @@ py -3.12 -m venv .venv
 ## Verify
 
 ```powershell
-.venv\Scripts\python.exe -m pytest -q                 # 165 contract / API / pipeline tests
+.venv\Scripts\python.exe -m pytest -q                 # 168 contract / API / pipeline tests
 .venv\Scripts\python.exe scripts\renderer_check.py     # renders the synthetic ball drop in Blender
 .venv\Scripts\python.exe scripts\browser_check.py      # UI at 5 widths (app must be running)
 .venv\Scripts\python.exe scripts\fidelity_selftest.py  # fidelity scorer sanity check
@@ -158,7 +158,7 @@ py -3.12 -m venv .venv
 
 `scripts\showcase.py` re-renders the gallery scenes and rebuilds the README media (needs Blender + FFmpeg).
 
-The 9 tests that shell out to FFmpeg (all of `tests\test_reference.py` plus two in `tests\test_complex_scenes.py`) are skipped automatically when `ffmpeg`/`ffprobe` are not on `PATH` (reason: `needs FFmpeg + ffprobe on PATH`). CI installs FFmpeg, so all 165 tests run there.
+The 9 tests that shell out to FFmpeg (all of `tests\test_reference.py` plus two in `tests\test_complex_scenes.py`) are skipped automatically when `ffmpeg`/`ffprobe` are not on `PATH` (reason: `needs FFmpeg + ffprobe on PATH`). CI installs FFmpeg, so all 168 tests run there.
 
 `scripts\export_check.py PROJECT_ID` rebuilds a finished project's ZIP in a fresh folder, reopens the `.blend`, and recaptures the comparison.
 
@@ -178,7 +178,7 @@ The 9 tests that shell out to FFmpeg (all of `tests\test_reference.py` plus two 
 | `web/` | Single-page workspace: import, library, compare, revise |
 | `examples/` | Gallery scenes (turntable, cascade, neon, island) and the ball-drop fixture |
 | `scripts/` | Renderer / browser / export / fidelity / pilot tooling |
-| `tests/` | 165 pytest tests |
+| `tests/` | 168 pytest tests |
 | `docs/` | Architecture, plans, benchmarks, audits |
 
 ## Safety model
