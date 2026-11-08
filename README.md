@@ -18,7 +18,7 @@ compare the render side by side, refine it in plain English, and export the `.bl
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 ![Status](https://img.shields.io/badge/status-experimental-orange)
 
-🛠 **Built in the open** — 3 contributors · 13 good first issues · we review PRs within 24h → [start here](https://github.com/blixvip/BlendClone/issues/14)
+🛠 **Built in the open** — 4 contributors · 12 good first issues · we review PRs within 24h → [start here](https://github.com/blixvip/BlendClone/issues/14)
 
 </div>
 
