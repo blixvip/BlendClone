@@ -18,7 +18,9 @@ function renderLibrary() {
   const matches = state.jobs.filter(job => job.title.toLowerCase().includes(query));
   for (const job of matches) {
     const button = document.createElement('button');
-    button.className = `project-item${job.id === state.active?.id ? ' selected' : ''}`;
+    const isOpen = job.id === state.active?.id;
+    button.className = `project-item${isOpen ? ' selected' : ''}`;
+    if (isOpen) button.setAttribute('aria-current', 'true');
     const title = document.createElement('strong'); title.textContent = job.title;
     const sub = document.createElement('small');
     const status = document.createElement('span'); status.textContent = job.status === 'preview' ? 'Preview ready' : job.status;
