@@ -18,10 +18,14 @@ class BlenderWorker:
         self.cancel = cancel
         self.index = 0
         self.log = (self.folder / 'worker.log').open('wb')
-        self.process = subprocess.Popen([blender_binary(), '--background', '--factory-startup', str(Path(blend).resolve()),
-            '--disable-autoexec', '--python-exit-code', '1', '--python', str(ROOT / 'app/blender_worker.py'), '--', str(self.folder)],
-            stdin=subprocess.PIPE, stdout=self.log, stderr=subprocess.STDOUT,
-            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+        try:
+            self.process = subprocess.Popen([blender_binary(), '--background', '--factory-startup', str(Path(blend).resolve()),
+                '--disable-autoexec', '--python-exit-code', '1', '--python', str(ROOT / 'app/blender_worker.py'), '--', str(self.folder)],
+                stdin=subprocess.PIPE, stdout=self.log, stderr=subprocess.STDOUT,
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+        except BaseException:
+            self.log.close()
+            raise
 
     def render(self, plan, frame=0, size=(270, 480), samples=12, timeout=300):
         plan = Plan.model_validate(plan.model_dump())
@@ -60,7 +64,11 @@ class BlenderWorker:
             self.process.wait(timeout=10)
         except subprocess.TimeoutExpired:
             self.process.terminate()  # Only the exact child created by this instance.
-            self.process.wait(timeout=10)
+            try:
+                self.process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                self.process.kill()  # Still our exact child; terminate was ignored.
+                self.process.wait(timeout=10)
         finally:
             self.log.close()
 

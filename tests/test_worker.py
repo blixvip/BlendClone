@@ -43,6 +43,8 @@ class FakeProcess:
         self.waits = []
         self.terminations = 0
         self.stall_once = False
+        self.stall_always = False
+        self.kills = 0
 
     def poll(self):
         return None
@@ -52,10 +54,16 @@ class FakeProcess:
         if self.stall_once:
             self.stall_once = False
             raise subprocess.TimeoutExpired('fake-owned-worker', timeout)
+        if self.stall_always:
+            raise subprocess.TimeoutExpired('fake-owned-worker', timeout)
         return 0
 
     def terminate(self):
         self.terminations += 1
+
+    def kill(self):
+        self.kills += 1
+        self.stall_always = False
 
 
 @pytest.fixture
@@ -110,6 +118,17 @@ def test_cancellation_while_waiting_raises_and_closes_owned_child(tmp_path, fake
             instance.render(fixture_plan())
     assert child.stdin.closed
     assert child.waits == [10]
+    assert instance.log.closed
+
+
+def test_close_kills_owned_child_when_terminate_is_ignored(tmp_path, fake_children):
+    instance = worker.BlenderWorker(tmp_path / 'scene.blend', tmp_path, threading.Event())
+    child = fake_children[0]
+    child.stall_always = True
+    instance.close()
+    assert child.terminations == 1
+    assert child.kills == 1
+    assert child.waits == [10, 10, 10]
     assert instance.log.closed
 
 
